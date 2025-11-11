@@ -28,7 +28,6 @@ def is_udp(current_user: dict = Depends(get_current_user)) -> dict:
     Raises a 403 Forbidden error if not.
     """
     perfil = current_user.get("perfil")
-    print(f"DEBUG: Checking user profile in is_udp. Profile found: {perfil}")
     if perfil != PerfilUsuario.UDP.value:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

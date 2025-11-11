@@ -15,7 +15,7 @@ api.interceptors.request.use(config => {
   const uiStore = useUiStore();
   const token = authStore.accessToken;
   
-  uiStore.setLoading(true);
+  // uiStore.setLoading(true);
 
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -42,7 +42,7 @@ const processQueue = (error: any, token: string | null = null) => {
 api.interceptors.response.use(
   response => {
     const uiStore = useUiStore();
-    uiStore.setLoading(false);
+    // uiStore.setLoading(false);
     return response;
   }, // Simply return successful responses
   async error => {
@@ -50,7 +50,7 @@ api.interceptors.response.use(
     const authStore = useAuthStore();
     const uiStore = useUiStore();
 
-    uiStore.setLoading(false);
+    // uiStore.setLoading(false);
 
     // Check if the error is 401 and it's not a retry request
     if (error.response.status === 401 && !originalRequest._retry) {

@@ -1,21 +1,16 @@
+# src/helpers/excel_helper.py
 from typing import List, Dict, Any
+from io import BytesIO
 import pandas as pd
-import io
 
-async def export_to_excel(data: List[Dict[str, Any]], filename: str = "export.xlsx") -> io.BytesIO:
+async def export_to_excel(data: List[Dict[str, Any]]) -> BytesIO:
     """
-    Exporta uma lista de dicionários para um arquivo Excel em memória.
-
-    Args:
-        data: Lista de dicionários a serem exportados.
-        filename: Nome do arquivo (usado para metadados, não para salvar no disco).
-
-    Returns:
-        Um objeto BytesIO contendo o arquivo Excel.
+    Exports a list of dictionaries to an Excel file in memory.
     """
     df = pd.DataFrame(data)
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        df.to_excel(writer, index=False, sheet_name='Dados')
+    output = BytesIO()
+    writer = pd.ExcelWriter(output, engine='xlsxwriter')
+    df.to_excel(writer, index=False, sheet_name='Relatorio')
+    writer.close() # Use close() instead of save() for newer pandas versions
     output.seek(0)
     return output

@@ -10,7 +10,8 @@ from dotenv import load_dotenv
 # Carrega as variáveis de ambiente do arquivo .env
 load_dotenv()
 
-from .resources.database import DatabaseManager, Base
+from .resources.database import DatabaseManager
+from .models.base import Base
 from .models import * # Import all models for SQLAlchemy to discover
 
 from fastapi.middleware.cors import CORSMiddleware
@@ -100,8 +101,7 @@ async def detailed_error_middleware(request: Request, call_next):
 app.mount("/assets", StaticFiles(directory="src/static/dist/assets"), name="assets")
 
 # Placeholder para incluir os roteadores da API
-from .routers import paciente, auth, admin, curso, certificado, relatorio, atribuicao, utils
-app.include_router(paciente.router)
+from .routers import auth, admin, curso, certificado, relatorio, atribuicao, utils, inscricao
 app.include_router(auth.router)
 app.include_router(admin.router)
 app.include_router(curso.router)
@@ -109,6 +109,7 @@ app.include_router(certificado.router)
 app.include_router(relatorio.router)
 app.include_router(atribuicao.router)
 app.include_router(utils.router)
+app.include_router(inscricao.router)
 
 # Exemplo:
 # from .routers import aih, bpa, material

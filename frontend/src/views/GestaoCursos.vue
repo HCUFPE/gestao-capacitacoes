@@ -2,17 +2,15 @@
   <div>
     <Card>
       <template #header>
-        <div class="flex justify-between items-center">
-          <div class="flex items-center space-x-2">
-            <AcademicCapIcon class="h-6 w-6" />
-            <h1 class="text-2xl font-bold">Gestão de Cursos</h1>
-          </div>
-          <Button @click="openCreateModal" variant="primary">
-            <template #icon><PlusIcon class="h-5 w-5" /></template>
-            Criar Novo Curso
-          </Button>
-        </div>
+        <PageHeader title="Gestão de Cursos" :icon="AcademicCapIcon" />
       </template>
+
+      <div class="flex justify-end mb-4">
+        <Button @click="openCreateModal" variant="primary" type="button">
+          <template #icon><PlusIcon class="h-5 w-5" /></template>
+          Criar Novo Curso
+        </Button>
+      </div>
 
       <!-- Loading/Error/Empty States -->
       <div v-if="loading" class="text-center py-10">
@@ -21,10 +19,6 @@
       <div v-else-if="error" class="text-center py-10 text-red-500">
         <p>Ocorreu um erro ao carregar os cursos: {{ error.message }}</p>
       </div>
-      <div v-else-if="!dataLoaded" class="text-center py-10">
-        <p>Clique no botão abaixo para carregar os cursos.</p>
-        <Button @click="loadData" variant="primary" class="mt-4">Carregar Cursos</Button>
-      </div>
       <div v-else-if="cursos.length === 0" class="text-center py-10 text-gray-500">
         <p>Nenhum curso encontrado. Crie o primeiro!</p>
       </div>
@@ -32,10 +26,19 @@
       <!-- Courses Table -->
       <div v-else class="mt-4">
         <DataTable :headers="tableHeaders" :items="cursos">
+          <template #link="{ item }">
+            <a v-if="item.link" :href="item.link" target="_blank" rel="noopener noreferrer" class="text-blue-500 hover:text-blue-700">
+              <LinkIcon class="h-5 w-5" />
+            </a>
+          </template>
           <template #actions="{ item }">
             <div class="flex items-center space-x-2">
-              <Button @click="openEditModal(item)" variant="secondary" size="sm">Editar</Button>
-              <Button @click="openDeleteModal(String(item.id))" variant="danger" size="sm">Deletar</Button>
+              <Button @click="openEditModal(item)" variant="secondary" size="sm" title="Editar">
+                <template #icon><PencilIcon class="h-4 w-4" /></template>
+              </Button>
+              <Button @click="openDeleteModal(String(item.id))" variant="danger" size="sm" title="Deletar">
+                <template #icon><TrashIcon class="h-4 w-4" /></template>
+              </Button>
             </div>
           </template>
         </DataTable>
@@ -84,6 +87,12 @@
             <label for="certificadora" class="form-label block text-sm font-medium text-paper-text mb-1">Certificadora (opcional)</label>
             <Field name="certificadora" type="text" id="certificadora" class="form-control block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm" />
           </div>
+
+          <div class="col-span-12 form-group mb-4">
+            <label for="link" class="form-label block text-sm font-medium text-paper-text mb-1">Link para Inscrição (opcional)</label>
+            <Field name="link" type="url" id="link" class="form-control block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm" placeholder="https://exemplo.com/inscricao" />
+            <ErrorMessage name="link" class="text-red-500 text-sm mt-1" />
+          </div>
         </div>
       </Form>
       
@@ -112,12 +121,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { Form, Field, ErrorMessage } from 'vee-validate';
 import { toTypedSchema } from '@vee-validate/zod';
 import * as z from 'zod';
 import { useToast } from 'vue-toastification';
-import { PlusIcon, AcademicCapIcon } from '@heroicons/vue/24/outline';
+import { PlusIcon, AcademicCapIcon, PencilIcon, TrashIcon, LinkIcon } from '@heroicons/vue/24/outline';
 
 import api from '../services/api';
 import { useAuthStore } from '../stores/auth';
@@ -125,14 +134,16 @@ import Card from '../components/Card.vue';
 import Button from '../components/Button.vue';
 import Modal from '../components/Modal.vue';
 import DataTable from '../components/DataTable.vue';
+import PageHeader from '../components/PageHeader.vue';
 
 const toast = useToast();
 const authStore = useAuthStore();
 
 const tableHeaders = ref([
   { text: 'Título', value: 'titulo' },
-  { text: 'Lotação', value: 'lotacao' },
-  { text: 'Ano GD', value: 'ano_gd' },
+  { text: 'Setor', value: 'lotacao' },
+  { text: 'Ano', value: 'ano_gd' },
+  { text: 'Inscrição', value: 'link' },
 ]);
 
 const cursos = ref<any[]>([]);
@@ -163,6 +174,7 @@ const validationSchema = toTypedSchema(
     ano_gd: z.number({ invalid_type_error: 'O ano é obrigatório' }).int().min(1900, 'Ano inválido').max(2100, 'Ano inválido'),
     carga_horaria: z.number().int().optional().nullable(),
     certificadora: z.string().optional(),
+    link: z.string().url('Link inválido').optional().or(z.literal('')),
   })
 );
 
@@ -212,6 +224,7 @@ const openCreateModal = () => {
     ano_gd: new Date().getFullYear(),
     carga_horaria: undefined,
     certificadora: '',
+    link: '',
   };
   isModalOpen.value = true;
 };
@@ -285,4 +298,7 @@ const handleSubmit = async (values: any) => {
     isSubmitting.value = false;
   }
 };
+onMounted(() => {
+  loadData();
+});
 </script>

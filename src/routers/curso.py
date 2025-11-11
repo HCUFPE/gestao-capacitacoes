@@ -8,7 +8,7 @@ from ..auth.auth import auth_handler
 from ..resources.database import get_app_db_session
 from ..models import Curso, AnoGD
 
-from ..auth.dependencies import is_chefia
+from ..auth.dependencies import is_chefia, get_current_user
 
 # --- Pydantic Schemas for Request/Response ---
 
@@ -37,6 +37,7 @@ router = APIRouter(
     tags=["Cursos"],
 )
 
+@router.get("", response_model=List[CursoResponse], dependencies=[Depends(auth_handler.decode_token)])
 @router.get("/", response_model=List[CursoResponse], dependencies=[Depends(auth_handler.decode_token)])
 async def listar_cursos(
     db: AsyncSession = Depends(get_app_db_session)
@@ -44,6 +45,7 @@ async def listar_cursos(
     """Lista todos os cursos da fonte de dados interna."""
     return await curso_controller.listar_cursos(db)
 
+@router.post("", response_model=CursoResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(auth_handler.decode_token), Depends(is_chefia)])
 @router.post("/", response_model=CursoResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(auth_handler.decode_token), Depends(is_chefia)])
 async def criar_curso(
     curso: CursoCreate,
@@ -85,3 +87,28 @@ async def obter_curso(
     if curso is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Curso não encontrado")
     return curso
+
+import logging
+
+# ... (other imports)
+
+@router.get("/recommended", response_model=List[CursoResponse], dependencies=[Depends(auth_handler.decode_token)])
+async def listar_cursos_recomendados(
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_app_db_session)
+):
+    """
+    Lista cursos recomendados para a lotação do usuário logado.
+    """
+    user_id = current_user.get("sub")
+    # Fetch user's lotacao
+    from ..models import Usuario # Import here to avoid circular dependency
+    from sqlalchemy.future import select
+    user_stmt = select(Usuario.lotacao).where(Usuario.id == user_id)
+    user_lotacao = (await db.execute(user_stmt)).scalar_one_or_none()
+    print(f"DEBUG (Router): user_lotacao from token = {user_lotacao}")
+
+    if not user_lotacao:
+        return [] # No lotacao, no recommended courses
+
+    return await curso_controller.listar_cursos_recomendados_por_lotacao(db, user_lotacao)

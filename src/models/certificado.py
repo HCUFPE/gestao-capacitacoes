@@ -1,5 +1,5 @@
 from sqlalchemy import Column, String, Integer, Boolean
-from ..resources.database import Base # Corrected import
+from .base import Base
 
 class Certificado(Base):
     __tablename__ = 'certificados'

@@ -6,9 +6,6 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, AsyncEngin
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 
-# Base para os modelos do banco de dados da aplicação (SQLite)
-Base = declarative_base()
-
 class DatabaseManager:
     """
     Manages asynchronous database connections and sessions for a specific DSN.

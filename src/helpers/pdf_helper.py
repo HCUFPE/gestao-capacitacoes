@@ -1,35 +1,29 @@
+# src/helpers/pdf_helper.py
 from typing import List, Dict, Any
-import io
+from io import BytesIO
 from reportlab.lib.pagesizes import letter
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib import colors
 
-async def export_to_pdf(data: List[Dict[str, Any]], filename: str = "export.pdf") -> io.BytesIO:
+async def export_to_pdf(data: List[Dict[str, Any]], filename: str = "report.pdf") -> BytesIO:
     """
-    Exporta uma lista de dicionários para um arquivo PDF em memória.
-
-    Args:
-        data: Lista de dicionários a serem exportados.
-        filename: Nome do arquivo (usado para metadados, não para salvar no disco).
-
-    Returns:
-        Um objeto BytesIO contendo o arquivo PDF.
+    Exports a list of dictionaries to a PDF file in memory.
     """
-    buffer = io.BytesIO()
+    buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter)
     styles = getSampleStyleSheet()
+    
     story = []
+    story.append(Paragraph("Relatório de Cursos por Lotação", styles['h1']))
+    story.append(Paragraph("<br/><br/>", styles['Normal']))
 
-    story.append(Paragraph(f"Relatório de Dados - {filename}", styles['h1']))
-    story.append(Spacer(1, 0.2 * letter[1]))
-
-    if data:
-        # Prepare table data
+    if not data:
+        story.append(Paragraph("Nenhum dado para exibir.", styles['Normal']))
+    else:
+        # Extract headers
         headers = list(data[0].keys())
-        table_data = [headers]
-        for row in data:
-            table_data.append([str(row.get(header, '')) for header in headers])
+        table_data = [headers] + [[str(item[header]) for header in headers] for item in data]
 
         table = Table(table_data)
         table.setStyle(TableStyle([
@@ -42,8 +36,6 @@ async def export_to_pdf(data: List[Dict[str, Any]], filename: str = "export.pdf"
             ('GRID', (0, 0), (-1, -1), 1, colors.black)
         ]))
         story.append(table)
-    else:
-        story.append(Paragraph("Nenhum dado para exportar.", styles['Normal']))
 
     doc.build(story)
     buffer.seek(0)

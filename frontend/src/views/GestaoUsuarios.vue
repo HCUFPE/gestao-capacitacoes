@@ -2,12 +2,7 @@
   <div>
     <Card>
       <template #header>
-        <div class="flex justify-between items-center">
-          <div class="flex items-center space-x-2">
-            <UsersIcon class="h-6 w-6" />
-            <h1 class="text-2xl font-bold">Gestão de Usuários</h1>
-          </div>
-        </div>
+        <PageHeader title="Gestão de Usuários" :icon="UsersIcon" />
       </template>
 
       <!-- Loading/Error/Empty States -->
@@ -17,42 +12,19 @@
       <div v-else-if="error" class="text-center py-10 text-red-500">
         <p>Ocorreu um erro ao carregar os usuários: {{ error.message }}</p>
       </div>
-      <div v-else-if="!dataLoaded" class="text-center py-10">
-        <p>Clique no botão abaixo para carregar os usuários.</p>
-        <Button @click="loadData" variant="primary" class="mt-4">Carregar Usuários</Button>
-      </div>
       <div v-else-if="users.length === 0" class="text-center py-10 text-gray-500">
         <p>Nenhum usuário encontrado.</p>
       </div>
 
       <!-- Users Table -->
-      <div v-else class="overflow-x-auto mt-4">
-        <table class="min-w-full bg-white">
-          <thead class="bg-gray-100">
-            <tr>
-              <th class="py-2 px-4 border-b text-left">Nome</th>
-              <th class="py-2 px-4 border-b text-left">Email</th>
-              <th class="py-2 px-4 border-b text-left">Lotação</th>
-              <th class="py-2 px-4 border-b text-left">Perfil</th>
-              <th class="py-2 px-4 border-b text-left">Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="user in users" :key="user.id" class="hover:bg-gray-50">
-              <td class="py-2 px-4 border-b">{{ user.displayName }}</td>
-              <td class="py-2 px-4 border-b">{{ user.email }}</td>
-              <td class="py-2 px-4 border-b">{{ user.lotacao }}</td>
-              <td class="py-2 px-4 border-b">
-                <span :class="getProfileBadgeClass(user.perfil)" class="px-2 py-1 rounded-full text-xs font-medium">
-                  {{ user.perfil }}
-                </span>
-              </td>
-              <td class="py-2 px-4 border-b">
-                <Button @click="openEditModal(user)" variant="secondary" size="sm">Editar</Button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+      <div v-else class="mt-4">
+        <DataTable :headers="tableHeaders" :items="users">
+          <template #actions="{ item }">
+            <Button @click="openEditModal(item)" variant="secondary" size="sm" type="button" title="Editar">
+              <template #icon><PencilIcon class="h-4 w-4" /></template>
+            </Button>
+          </template>
+        </DataTable>
       </div>
     </Card>
 
@@ -89,17 +61,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { Form, Field, ErrorMessage } from 'vee-validate';
 import { toTypedSchema } from '@vee-validate/zod';
 import * as z from 'zod';
 import { useToast } from 'vue-toastification';
-import { UsersIcon } from '@heroicons/vue/24/outline';
+import { UsersIcon, PencilIcon } from '@heroicons/vue/24/outline';
 
 import api from '../services/api';
 import Card from '../components/Card.vue';
 import Button from '../components/Button.vue';
 import Modal from '../components/Modal.vue';
+import DataTable from '../components/DataTable.vue';
+import PageHeader from '../components/PageHeader.vue';
 
 type UserProfile = {
   id: string;
@@ -112,6 +86,13 @@ type UserProfile = {
 const toast = useToast();
 
 const users = ref<UserProfile[]>([]);
+
+const tableHeaders = ref([
+  { text: 'Nome', value: 'displayName' },
+  { text: 'Email', value: 'email' },
+  { text: 'Lotação', value: 'lotacao' },
+  { text: 'Perfil', value: 'perfil' },
+]);
 const loading = ref(false);
 const error = ref<Error | null>(null);
 const dataLoaded = ref(false);
@@ -200,4 +181,7 @@ const getProfileBadgeClass = (profile: string) => {
       return 'bg-blue-100 text-blue-800';
   }
 };
+onMounted(() => {
+  loadData();
+});
 </script>

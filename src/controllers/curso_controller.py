@@ -1,11 +1,10 @@
-from typing import List, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy import insert, update, delete
+from sqlalchemy import delete
+from typing import List, Dict, Any
 from uuid import uuid4
 
-from ..models import Curso, AnoGD, Atribuicao
-from . import atribuicao_controller # Import the atribuicao_controller
+from ..models import Curso, Atribuicao
 
 async def listar_cursos(db: AsyncSession) -> List[Curso]:
     """
@@ -16,28 +15,47 @@ async def listar_cursos(db: AsyncSession) -> List[Curso]:
 
 async def criar_curso(db: AsyncSession, curso_data: Dict[str, Any]) -> Curso:
     """
-    Cria um novo curso e automaticamente atribui a todos os usuários da lotação.
+    Cria um novo curso usando o ORM do SQLAlchemy.
     """
     new_id = str(uuid4())
     curso_data["id"] = new_id
     
-    # Converte o ano para o enum, se necessário
-    if "ano_gd" in curso_data and isinstance(curso_data["ano_gd"], int):
-        curso_data["ano_gd"] = AnoGD(curso_data["ano_gd"])
-
     new_curso = Curso(**curso_data)
     db.add(new_curso)
     await db.commit()
     await db.refresh(new_curso)
-
-    # Passo 2: Chamar a função para criar as atribuições
-    await atribuicao_controller.criar_atribuicoes_para_lotacao(
-        db=db,
-        curso_id=new_curso.id,
-        lotacao=new_curso.lotacao
-    )
-
     return new_curso
+
+async def atualizar_curso(db: AsyncSession, curso_id: str, curso_data: Dict[str, Any]) -> Curso | None:
+    """
+    Atualiza um curso existente usando o ORM do SQLAlchemy.
+    """
+    result = await db.execute(select(Curso).where(Curso.id == curso_id))
+    curso = result.scalars().first()
+
+    if curso:
+        for key, value in curso_data.items():
+            setattr(curso, key, value)
+        await db.commit()
+        await db.refresh(curso)
+        return curso
+    return None
+
+async def deletar_curso(db: AsyncSession, curso_id: str) -> bool:
+    """
+    Deleta um curso e suas atribuições associadas usando o ORM do SQLAlchemy.
+    """
+    # Deletar atribuições relacionadas primeiro
+    await db.execute(delete(Atribuicao).where(Atribuicao.curso_id == curso_id))
+    
+    # Deletar o curso
+    result = await db.execute(select(Curso).where(Curso.id == curso_id))
+    curso = result.scalars().first()
+    if curso:
+        await db.delete(curso)
+        await db.commit()
+        return True
+    return False
 
 async def obter_curso_por_id(db: AsyncSession, curso_id: str) -> Curso | None:
     """
@@ -46,37 +64,10 @@ async def obter_curso_por_id(db: AsyncSession, curso_id: str) -> Curso | None:
     result = await db.execute(select(Curso).where(Curso.id == curso_id))
     return result.scalars().first()
 
-async def atualizar_curso(db: AsyncSession, curso_id: str, curso_data: Dict[str, Any]) -> Curso | None:
+async def listar_cursos_recomendados_por_lotacao(db: AsyncSession, lotacao: str) -> List[Curso]:
     """
-    Atualiza um curso existente.
+    Lista cursos recomendados para uma lotação específica.
     """
-    # Converte o ano para o enum, se necessário
-    if "ano_gd" in curso_data and isinstance(curso_data["ano_gd"], int):
-        curso_data["ano_gd"] = AnoGD(curso_data["ano_gd"])
-        
-    stmt = (
-        update(Curso)
-        .where(Curso.id == curso_id)
-        .values(**curso_data)
-        .returning(Curso)
-    )
-    result = await db.execute(stmt)
-    await db.commit()
-    return result.scalar_one_or_none()
-
-async def deletar_curso(db: AsyncSession, curso_id: str) -> bool:
-    """
-    Deleta um curso e todas as suas atribuições associadas.
-    Retorna True se a deleção foi bem-sucedida, False caso contrário.
-    """
-    # Primeiro, deleta as atribuições associadas
-    stmt_delete_atribuicoes = delete(Atribuicao).where(Atribuicao.curso_id == curso_id)
-    await db.execute(stmt_delete_atribuicoes)
-    
-    # Depois, deleta o curso
-    stmt_delete_curso = delete(Curso).where(Curso.id == curso_id)
-    result = await db.execute(stmt_delete_curso)
-    
-    await db.commit()
-    # rowcount > 0 significa que o curso foi encontrado e deletado
-    return result.rowcount > 0
+    print(f"DEBUG (Controller): lotacao received for comparison = {lotacao}")
+    result = await db.execute(select(Curso).where(Curso.lotacao.ilike(lotacao)))
+    return result.scalars().all()

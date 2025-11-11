@@ -87,12 +87,21 @@ class ActiveDirectoryAuthProvider(AuthProviderInterface):
             user_info = {"username": username}
             if result_data and result_data[0][1]:
                 user_entry = result_data[0][1]
+                perfil_determinado = "Trabalhador" # Default
                 for key, value in user_entry.items():
                     if key == 'memberOf':
                         groups = [re.match(r'CN=([^,]+)', group_dn.decode('utf-8')).group(1) for group_dn in value if re.match(r'CN=([^,]+)', group_dn.decode('utf-8'))]
                         user_info['groups'] = groups
+                        
+                        # Determinar o perfil com base nos grupos
+                        if "GLO-SEC-HCPE-SETISD" in groups:
+                            perfil_determinado = "UDP"
+                        elif "GLO-SEC-HCPE-PROFISSIONAL_ASSISTENCIAL" in groups: # Exemplo de grupo para Chefia
+                            perfil_determinado = "Chefia"
+                        
                     else:
                         user_info[key] = [i.decode('utf-8', 'ignore') for i in value] if isinstance(value, list) else value.decode('utf-8', 'ignore')
+                user_info['perfil'] = perfil_determinado # Adiciona o perfil ao user_info
 
             if search_ldap_conn != l:
                 search_ldap_conn.unbind_s()
