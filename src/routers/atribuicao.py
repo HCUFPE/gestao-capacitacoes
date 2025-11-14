@@ -8,7 +8,7 @@ from ..controllers import atribuicao_controller
 from ..auth.auth import auth_handler
 from ..auth.dependencies import get_current_user
 from ..resources.database import get_app_db_session
-from ..models import StatusAtribuicao, AnoGD
+from ..models import StatusAtribuicao
 
 # --- Pydantic Schemas for Response ---
 
@@ -16,7 +16,8 @@ class CursoForAtribuicaoResponse(BaseModel):
     id: str
     titulo: str
     carga_horaria: int | None = None
-    ano_gd: AnoGD | None = None
+    ano_gd: str | None = None
+    link: str | None = None
 
     class Config:
         from_attributes = True
@@ -24,9 +25,7 @@ class CursoForAtribuicaoResponse(BaseModel):
 class AtribuicaoResponse(BaseModel):
     id: str
     status: StatusAtribuicao
-    data_atribuicao: datetime
-    data_conclusao: datetime | None = None
-    data_validacao: datetime | None = None
+    atribuido_em: datetime
     curso: CursoForAtribuicaoResponse
 
     class Config:

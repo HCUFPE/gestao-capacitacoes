@@ -30,6 +30,10 @@ class AuthProviderInterface(ABC):
     def authenticate_user(self, username, password) -> dict:
         pass
 
+    @abstractmethod
+    def get_user_ad_info(self, username: str) -> dict:
+        pass
+
 class MockAuthProvider(AuthProviderInterface):
     """Provedor de autenticação mock para desenvolvimento offline."""
     def authenticate_user(self, username, password) -> dict:
@@ -119,6 +123,50 @@ class ActiveDirectoryAuthProvider(AuthProviderInterface):
             if l:
                 l.unbind_s()
 
+    def get_user_ad_info(self, username: str) -> dict:
+        print(f"--- Starting AD Info Fetch for user: {username} ---")
+        l = None
+        try:
+            l = ldap.initialize(self.ad_url)
+            l.protocol_version = ldap.VERSION3
+            l.set_option(ldap.OPT_REFERRALS, 0)
+
+            if self.ad_bind_user and self.ad_bind_password:
+                l.simple_bind_s(self.ad_bind_user, self.ad_bind_password)
+            else:
+                # If no service account, we can't search. This is a configuration decision.
+                # For this use case, we'll assume a service account is necessary for lookups.
+                raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="User lookup requires a configured AD service account.")
+
+            search_filter = f"(&(objectClass=user)(sAMAccountName={username}))"
+            result_id = l.search(self.ad_basedn, ldap.SCOPE_SUBTREE, search_filter, ["*"])
+            result_type, result_data = l.result(result_id, 1)
+
+            if not result_data or not result_data[0][1]:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User '{username}' not found in Active Directory.")
+
+            user_entry = result_data[0][1]
+            user_info = {"username": username}
+            groups = []
+            
+            for key, value in user_entry.items():
+                if key == 'memberOf':
+                    groups = [re.match(r'CN=([^,]+)', group_dn.decode('utf-8')).group(1) for group_dn in value if re.match(r'CN=([^,]+)', group_dn.decode('utf-8'))]
+                    user_info['groups'] = groups
+                else:
+                    user_info[key] = [i.decode('utf-8', 'ignore') for i in value] if isinstance(value, list) else value.decode('utf-8', 'ignore')
+            
+            print(f"--- AD Info Fetch successful for user: {username}. ---")
+            return user_info
+
+        except ldap.SERVER_DOWN:
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="AD server is down or unreachable")
+        except Exception as e:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"AD error: {e}")
+        finally:
+            if l:
+                l.unbind_s()
+
 # --- AuthHandler Principal ---
 
 class AuthHandler:
@@ -133,6 +181,9 @@ class AuthHandler:
 
     def authenticate_user(self, username, password):
         return self.provider.authenticate_user(username, password)
+
+    def get_user_ad_info(self, username: str):
+        return self.provider.get_user_ad_info(username)
 
     def create_access_token(self, data: dict, expires_delta: timedelta | None = None):
         to_encode = data.copy()

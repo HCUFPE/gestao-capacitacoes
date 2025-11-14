@@ -17,6 +17,8 @@ class Usuario(Base):
     perfil = Column(Enum(PerfilUsuario), default=PerfilUsuario.TRABALHADOR, nullable=False)
     lotacao = Column(String, doc="Departamento do usuário, vindo do AD (em maiúsculas)")
     nome_chefia = Column(String, doc="Nome do chefe direto do usuário, vindo do AD (em maiúsculas)")
+    cargo = Column(String, nullable=True, doc="Cargo do usuário, vindo do AD (title)")
+    matricula = Column(String, nullable=True, doc="Matrícula do usuário, vindo do AD (employeeNumber)")
 
     def __repr__(self):
         return f"<Usuario(id='{self.id}', nome='{self.nome}', perfil='{self.perfil.value}')>"

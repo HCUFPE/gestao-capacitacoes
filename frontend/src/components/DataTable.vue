@@ -28,7 +28,7 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script setup lang="ts" generic="T extends { id: string | number; [key: string]: any; }">
 
 
 interface Header {
@@ -36,19 +36,8 @@ interface Header {
   value: string;
 }
 
-interface Item {
-  id: number | string;
-  [key: string]: any;
-}
-
-defineProps({
-  headers: {
-    type: Array as () => Header[],
-    required: true,
-  },
-  items: {
-    type: Array as () => Item[],
-    required: true,
-  },
-});
+defineProps<{
+  headers: Header[];
+  items: T[];
+}>();
 </script>

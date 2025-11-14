@@ -9,7 +9,7 @@
           <label class="block text-sm font-bold mb-2" for="username">
             Usuário
           </label>
-          <input v-model="username" class="shadow-inner appearance-none border rounded w-full py-2 px-3 leading-tight focus:outline-none focus:shadow-outline" id="username" type="text" placeholder="E.g., EBSERHNET\\user">
+          <input v-model="username" class="shadow-inner appearance-none border rounded w-full py-2 px-3 leading-tight focus:outline-none focus:shadow-outline" id="username" type="text" placeholder="nome.sobrenome">
         </div>
         <div class="mb-6">
           <label class="block text-sm font-bold mb-2" for="password">
@@ -87,7 +87,7 @@ const handleLogin = async () => {
   error.value = '';
   try {
     await authStore.login(username.value, password.value, rememberMe.value);
-    await router.push('/admin'); // Or wherever you want to redirect after login
+    await router.push({ name: 'Meus Cursos' }); // Or wherever you want to redirect after login
   } catch (e: any) {
     error.value = e.response?.data?.detail || e.message || 'An unknown error occurred';
   } finally {

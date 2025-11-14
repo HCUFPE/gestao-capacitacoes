@@ -66,26 +66,43 @@ async def refresh_token(request: Request, response: Response, db: AsyncSession =
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token not found")
 
     token_obj = await auth_handler.verify_refresh_token(refresh_token, db)
-    # Re-fetch full user data to ensure the new token has all AD attributes
-    try:
-        user_full_info = await run_in_threadpool(auth_handler.authenticate_user, token_obj.user_id, None) # Pass None for password as we are re-authenticating
-    except HTTPException as e:
-        # Handle cases where the user might not exist in AD anymore
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Failed to re-authenticate user: {e.detail}")
 
-    # Invalidate the old refresh token (optional: implement rotation for better security)
+    # 1. Get user's profile from the local database
+    db_user = await usuario_controller.get_user_by_username(db, token_obj.user_id)
+    if not db_user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found in local database after refresh token verification.")
+    
+    if not db_user.perfil:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="User profile not found in local database.")
+
+    # 2. Prepare data for JWT using information from the refresh token and local DB
+    try:
+        jwt_data = {
+            "username": token_obj.user_id,
+            "groups": token_obj.groups,
+            "perfil": db_user.perfil.value,
+            "displayName": db_user.nome,
+            "email": db_user.email or "" # Ensure email is always a string
+        }
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error preparing JWT data: {e}")
+
+    # Invalidate the old refresh token (implement rotation for better security)
     await auth_handler.invalidate_refresh_token(refresh_token, db)
 
     # Create a new access token (short-lived)
-    new_access_token = auth_handler.create_access_token(
-        data=user_full_info,
-        expires_delta=timedelta(minutes=15)
-    )
+    try:
+        new_access_token = auth_handler.create_access_token(
+            data=jwt_data,
+            expires_delta=timedelta(minutes=15)
+        )
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error creating new access token: {e}")
 
     # Create a new refresh token and set it as a new HttpOnly cookie
     new_refresh_token = await auth_handler.create_refresh_token(
-        user_id=user_full_info["username"], 
-        groups=user_full_info.get("groups", []), 
+        user_id=jwt_data["username"],
+        groups=jwt_data["groups"],
         db=db
     )
     response.set_cookie(
@@ -112,11 +129,39 @@ async def logout(response: Response, request: Request, db: AsyncSession = Depend
     return {"message": "Logged out successfully"}
 
 @router.get("/users/me")
-async def read_users_me(current_user: dict = Depends(auth_handler.decode_token)):
+async def read_users_me(
+    current_user: dict = Depends(auth_handler.decode_token),
+    db: AsyncSession = Depends(get_app_db_session)
+):
     """
-    Returns the current user's information.
+    Returns the current user's information from the local database.
     """
-    return current_user
+    username = current_user.get("sub")
+    if not username:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username not found in token.")
+
+    db_user = await usuario_controller.get_user_by_username(db, username)
+    if not db_user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found in local database.")
+
+    # Construct a dictionary that matches the frontend's User interface
+    user_info = {
+        "username": db_user.id,
+        "displayName": db_user.nome,
+        "email": db_user.email,
+        "perfil": db_user.perfil.value,
+        "department": [db_user.lotacao] if db_user.lotacao else [],
+        "title": [db_user.cargo] if db_user.cargo else [],
+        "employeeNumber": [db_user.matricula] if db_user.matricula else [],
+        "userPrincipalName": [db_user.email] if db_user.email else [],
+        "givenName": [db_user.nome.split(' ')[0]] if db_user.nome else [],
+    }
+    
+    # Merge groups from the token, as they are not stored in the Usuario model
+    if "groups" in current_user:
+        user_info["groups"] = current_user["groups"]
+
+    return user_info
 
 
 

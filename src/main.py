@@ -79,13 +79,7 @@ async def detailed_error_middleware(request: Request, call_next):
         response = await call_next(request)
         return response
     except Exception as e:
-        print("--- Unhandled Exception ---")
-        print(f"Request: {request.method} {request.url}")
-        print("Headers:")
-        for name, value in request.headers.items():
-            print(f"  {name}: {value}")
-        
-        print("\nTraceback:")
+        # Log the exception traceback to the console for debugging
         traceback.print_exc()
         
         return JSONResponse(
@@ -110,6 +104,21 @@ app.include_router(relatorio.router)
 app.include_router(atribuicao.router)
 app.include_router(utils.router)
 app.include_router(inscricao.router)
+
+# Rota para download forçado de certificados
+@app.get("/api/certificados/download/{file_name:path}")
+async def download_certificado(file_name: str):
+    file_path = os.path.join("src", "static", "uploads", file_name)
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Certificado não encontrado")
+    
+    # Força o download do arquivo
+    return FileResponse(
+        path=file_path,
+        media_type="application/octet-stream",
+        filename=file_name,
+        headers={"Content-Disposition": f"attachment; filename={file_name}"}
+    )
 
 # Exemplo:
 # from .routers import aih, bpa, material

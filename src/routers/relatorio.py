@@ -1,81 +1,110 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from starlette.responses import StreamingResponse
+from typing import List, Dict, Any
 
 from ..controllers import relatorio_controller
 from ..auth.auth import auth_handler
 from ..resources.database import get_app_db_session
-from ..helpers import excel_helper, pdf_helper
+from ..auth.dependencies import is_udp, is_chefia, get_current_user
+
+# --- Router Definition ---
 
 router = APIRouter(
     prefix="/api/relatorios",
     tags=["Relatórios"],
+    dependencies=[Depends(auth_handler.decode_token)]
 )
 
-@router.get("/cursos-por-lotacao", dependencies=[Depends(auth_handler.decode_token)])
-async def get_relatorio_cursos_por_lotacao(
-    lotacao: str,
+@router.get("/udp/cursos-populares", response_model=List[Dict[str, Any]], dependencies=[Depends(is_udp)])
+async def get_cursos_mais_inscritos_udp(
+    db: AsyncSession = Depends(get_app_db_session),
+    limit: int = 10
+):
+    """
+    Relatório para a UDP: Lista os cursos mais inscritos/atribuídos.
+    Requer perfil UDP.
+    """
+    return await relatorio_controller.listar_cursos_mais_inscritos_udp(db, limit)
+
+# Placeholder para outros endpoints de relatório
+@router.get("/udp/status-geral", response_model=List[Dict[str, Any]], dependencies=[Depends(is_udp)])
+async def get_status_geral_udp(
     db: AsyncSession = Depends(get_app_db_session)
 ):
     """
-    Gera um relatório de status de conclusão de cursos para uma lotação específica.
+    Relatório para a UDP: Status geral das capacitações.
+    Requer perfil UDP.
     """
-    data = await relatorio_controller.relatorio_cursos_por_lotacao(db, lotacao)
-    return data
+    return await relatorio_controller.get_relatorio_status_geral_udp(db)
 
-@router.get("/exportar-excel", dependencies=[Depends(auth_handler.decode_token)])
-async def exportar_relatorio_excel(
-    lotacao: str,
+@router.get("/udp/conformidade-lotacao", response_model=List[Dict[str, Any]], dependencies=[Depends(is_udp)])
+async def get_conformidade_lotacao_udp(
     db: AsyncSession = Depends(get_app_db_session)
 ):
     """
-    Exporta o relatório de cursos por lotação para um arquivo Excel.
+    Relatório para a UDP: Conformidade por lotação.
+    Requer perfil UDP.
     """
-    data = await relatorio_controller.relatorio_cursos_por_lotacao(db, lotacao)
-    
-    # Converte os dados para um formato simples se necessário
-    data_to_export = [
-        {
-            "Curso": item["titulo"],
-            "Ano GD": item["ano_gd"].value if item["ano_gd"] else None,
-            "Total de Atribuições": item["total_atribuicoes"],
-            "Total de Concluídos": item["total_concluidos"],
-        }
-        for item in data
-    ]
+    return await relatorio_controller.get_relatorio_conformidade_lotacao_udp(db)
 
-    excel_file = await excel_helper.export_to_excel(data_to_export)
-    
-    return StreamingResponse(
-        excel_file,
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": f"attachment; filename=relatorio_{lotacao}.xlsx"}
-    )
-
-@router.get("/exportar-pdf", dependencies=[Depends(auth_handler.decode_token)])
-async def exportar_relatorio_pdf(
-    lotacao: str,
+@router.get("/udp/certificados-pendentes", response_model=List[Dict[str, Any]], dependencies=[Depends(is_udp)])
+async def get_certificados_pendentes_udp(
     db: AsyncSession = Depends(get_app_db_session)
 ):
     """
-    Exporta o relatório de cursos por lotação para um arquivo PDF.
+    Relatório para a UDP: Certificados pendentes de validação.
+    Requer perfil UDP.
     """
-    data = await relatorio_controller.relatorio_cursos_por_lotacao(db, lotacao)
-    
-    data_to_export = [
-        {
-            "Curso": item["titulo"],
-            "Ano GD": str(item["ano_gd"].value) if item["ano_gd"] else "N/A",
-            "Atribuições": str(item["total_atribuicoes"]),
-            "Concluídos": str(item["total_concluidos"]),
-        }
-        for item in data
-    ]
+    return await relatorio_controller.get_relatorio_certificados_pendentes_udp(db)
 
-    pdf_file = await pdf_helper.export_to_pdf(data_to_export, filename=f"relatorio_{lotacao}.pdf")
-    
-    return StreamingResponse(
-        pdf_file,
-        media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename=relatorio_{lotacao}.pdf"}
-    )
+@router.get("/udp/usuarios-perfil-lotacao", response_model=List[Dict[str, Any]], dependencies=[Depends(is_udp)])
+async def get_usuarios_perfil_lotacao_udp(
+    db: AsyncSession = Depends(get_app_db_session)
+):
+    """
+    Relatório para a UDP: Usuários por perfil e lotação.
+    Requer perfil UDP.
+    """
+    return await relatorio_controller.get_relatorio_usuarios_por_perfil_lotacao_udp(db)
+
+@router.get("/chefia/status-lotacao", response_model=List[Dict[str, Any]], dependencies=[Depends(is_chefia)])
+async def get_status_lotacao_chefia(
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_app_db_session)
+):
+    """
+    Relatório para a Chefia: Status de cursos da minha lotação.
+    Requer perfil Chefia.
+    """
+    lotacao = current_user.get("lotacao")
+    if not lotacao:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Lotação do usuário não encontrada.")
+    return await relatorio_controller.get_relatorio_status_lotacao_chefia(db, lotacao)
+
+@router.get("/chefia/progresso-individual", response_model=List[Dict[str, Any]], dependencies=[Depends(is_chefia)])
+async def get_progresso_individual_chefia(
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_app_db_session)
+):
+    """
+    Relatório para a Chefia: Progresso individual de subordinados.
+    Requer perfil Chefia.
+    """
+    lotacao = current_user.get("lotacao")
+    if not lotacao:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Lotação do usuário não encontrada.")
+    return await relatorio_controller.get_relatorio_progresso_individual_chefia(db, lotacao)
+
+@router.get("/chefia/certificados-pendentes", response_model=List[Dict[str, Any]], dependencies=[Depends(is_chefia)])
+async def get_certificados_pendentes_chefia(
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_app_db_session)
+):
+    """
+    Relatório para a Chefia: Certificados pendentes de validação.
+    Requer perfil Chefia.
+    """
+    lotacao = current_user.get("lotacao")
+    if not lotacao:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Lotação do usuário não encontrada.")
+    return await relatorio_controller.get_relatorio_certificados_pendentes_chefia(db, lotacao)

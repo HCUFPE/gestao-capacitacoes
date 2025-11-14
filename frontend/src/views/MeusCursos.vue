@@ -17,126 +17,141 @@
 
     <div v-else class="space-y-8">
       <!-- Cursos Inscritos -->
-      <section>
+      <section v-if="enrolledCourses.length > 0">
         <h2 class="text-xl font-bold mb-4 flex items-center space-x-2">
           <CheckCircleIcon class="h-6 w-6 text-green-500" />
           <span>Cursos Inscritos</span>
         </h2>
-        <div v-if="enrolledCourses.length === 0" class="text-center text-gray-500 py-4">
-          <p>Você não está inscrito em nenhum curso.</p>
-        </div>
-        <div v-else class="space-y-4">
-          <Card v-for="inscricao in enrolledCourses" :key="inscricao.id">
-            <div class="grid grid-cols-12 gap-4 items-center">
-              <div class="col-span-12 md:col-span-8">
-                <h3 class="text-lg font-semibold">{{ inscricao.curso.titulo }}</h3>
-                <p class="text-sm text-gray-600">Carga Horária: {{ inscricao.curso.carga_horaria }}h</p>
-                <p class="text-sm text-gray-600">Ano GD: {{ inscricao.curso.ano_gd }}</p>
-                <a v-if="inscricao.curso.link" :href="inscricao.curso.link" target="_blank" rel="noopener noreferrer" class="text-blue-500 hover:text-blue-700 text-sm flex items-center space-x-1 mt-1">
-                  <LinkIcon class="h-4 w-4" />
-                  <span>Link de Inscrição</span>
-                </a>
-              </div>
-              <div class="col-span-12 md:col-span-4 flex justify-end space-x-2">
-                <Button @click="handleUnenroll(inscricao.id)" variant="danger" type="button">
-                  <template #icon><XCircleIcon class="h-5 w-5" /></template>
-                  Desinscrever-se
-                </Button>
-              </div>
-            </div>
-          </Card>
+        <div class="space-y-4">
+          <CourseCard v-for="inscricao in enrolledCourses" :key="inscricao.id" :curso="{ ...inscricao.curso, status: inscricao.status, atribuicaoId: inscricao.atribuicao_id }" @send-certificate="handleSendCertificate">
+            <template #secondary-action>
+              <Button @click="handleUnenroll(inscricao.id)" variant="danger" type="button">
+                <template #icon><XCircleIcon class="h-5 w-5" /></template>
+                Desinscrever-se
+              </Button>
+            </template>
+            <template #primary-action>
+              <Button v-if="inscricao.status === 'Em Andamento'" variant="primary" type="button" @click="handleSendCertificate(inscricao.atribuicao_id)">
+                <template #icon><ArrowUpTrayIcon class="h-5 w-5" /></template>
+                Enviar Certificado
+              </Button>
+              <Button v-else variant="secondary" @click="openDetailsModal(inscricao)">
+                <template #icon><InformationCircleIcon class="h-5 w-5" /></template>
+                Ver Detalhes
+              </Button>
+            </template>
+          </CourseCard>
         </div>
       </section>
 
       <!-- Cursos Atribuídos (antigas atribuições) -->
-      <section>
+      <section v-if="filteredAssignedCourses.length > 0">
         <h2 class="text-xl font-bold mb-4 flex items-center space-x-2">
           <IdentificationIcon class="h-6 w-6 text-blue-500" />
           <span>Cursos Atribuídos</span>
         </h2>
-        <div v-if="assignedCourses.length === 0" class="text-center text-gray-500 py-4">
-          <p>Nenhum curso foi atribuído a você.</p>
-        </div>
-        <div v-else class="space-y-4">
-          <Card v-for="atribuicao in assignedCourses" :key="atribuicao.id">
-            <div class="grid grid-cols-12 gap-4 items-center">
-              <div class="col-span-12 md:col-span-6">
-                <h3 class="text-lg font-semibold">{{ atribuicao.curso.titulo }}</h3>
-                <p class="text-sm text-gray-600">Carga Horária: {{ atribuicao.curso.carga_horaria }}h</p>
-                <p class="text-sm text-gray-600">Ano GD: {{ atribuicao.curso.ano_gd }}</p>
-                <a v-if="atribuicao.curso.link" :href="atribuicao.curso.link" target="_blank" rel="noopener noreferrer" class="text-blue-500 hover:text-blue-700 text-sm flex items-center space-x-1 mt-1">
-                  <LinkIcon class="h-4 w-4" />
-                  <span>Link de Inscrição</span>
-                </a>
-              </div>
-              <div class="col-span-12 md:col-span-3 text-center">
-                <span
-                  class="px-3 py-1 text-sm font-semibold rounded-full"
-                  :class="getStatusClass(atribuicao.status)"
-                >
-                  {{ atribuicao.status }}
-                </span>
-              </div>
-              <div class="col-span-12 md:col-span-3 flex justify-end space-x-2">
-                <Button v-if="atribuicao.status === 'Pendente'" variant="primary" type="button">
-                  Enviar Certificado
-                </Button>
-                <Button v-else variant="secondary" disabled>
-                  Ver Detalhes
-                </Button>
-              </div>
-            </div>
-          </Card>
+        <div class="space-y-4">
+          <CourseCard v-for="atribuicao in filteredAssignedCourses" :key="atribuicao.id" :curso="{ ...atribuicao.curso, status: atribuicao.status, atribuicaoId: atribuicao.id }" @send-certificate="handleSendCertificate">
+            <template #primary-action>
+              <Button v-if="atribuicao.status === 'Pendente'" variant="success" type="button" @click="handleEnroll(atribuicao.curso.id)">
+                <template #icon><CheckCircleIcon class="h-5 w-5" /></template>
+                Inscrever-se
+              </Button>
+              <Button v-else variant="secondary" @click="openDetailsModal(atribuicao)">
+                <template #icon><InformationCircleIcon class="h-5 w-5" /></template>
+                Ver Detalhes
+              </Button>
+            </template>
+          </CourseCard>
         </div>
       </section>
 
       <!-- Cursos Recomendados -->
-      <section>
+      <section v-if="recommendedCourses.length > 0">
         <h2 class="text-xl font-bold mb-4 flex items-center space-x-2">
           <AcademicCapIcon class="h-6 w-6 text-purple-500" />
           <span>Cursos Recomendados para sua Lotação</span>
         </h2>
-        <div v-if="recommendedCourses.length === 0" class="text-center text-gray-500 py-4">
-          <p>Nenhum curso recomendado para sua lotação.</p>
+        <div class="space-y-4">
+          <CourseCard v-for="curso in recommendedCourses" :key="curso.id" :curso="curso">
+            <template #primary-action>
+              <Button @click="handleEnroll(curso.id)" variant="success" type="button">
+                <template #icon><CheckCircleIcon class="h-5 w-5" /></template>
+                Inscrever-se
+              </Button>
+            </template>
+          </CourseCard>
         </div>
-        <div v-else class="space-y-4">
-          <Card v-for="curso in recommendedCourses" :key="curso.id">
-            <div class="grid grid-cols-12 gap-4 items-center">
-              <div class="col-span-12 md:col-span-8">
-                <h3 class="text-lg font-semibold">{{ curso.titulo }}</h3>
-                <p class="text-sm text-gray-600">Carga Horária: {{ curso.carga_horaria }}h</p>
-                <p class="text-sm text-gray-600">Ano GD: {{ curso.ano_gd }}</p>
-                <a v-if="curso.link" :href="curso.link" target="_blank" rel="noopener noreferrer" class="text-blue-500 hover:text-blue-700 text-sm flex items-center space-x-1 mt-1">
-                  <LinkIcon class="h-4 w-4" />
-                  <span>Link de Inscrição</span>
-                </a>
-              </div>
-              <div class="col-span-12 md:col-span-4 flex justify-end space-x-2">
-                <Button @click="handleEnroll(curso.id)" variant="success" type="button">
-                  <template #icon><CheckCircleIcon class="h-5 w-5" /></template>
-                  Inscrever-se
-                </Button>
+      </section>
+
+      <!-- Cursos Genéricos -->
+      <section v-if="genericCourses.length > 0">
+        <h2 class="text-xl font-bold mb-4 flex items-center space-x-2">
+          <AcademicCapIcon class="h-6 w-6 text-gray-500" />
+          <span>Cursos de Interesse Geral</span>
+        </h2>
+        <div class="space-y-2">
+          <div v-for="curso in genericCourses" :key="curso.id" class="flex items-center justify-between p-3 border border-gray-200 rounded-lg bg-gray-50">
+            <div class="flex items-center space-x-3">
+              <AcademicCapIcon class="h-8 w-8 text-gray-400 flex-shrink-0" />
+              <div>
+                <span class="text-lg leading-tight font-medium text-black">{{ curso.titulo }}</span>
+                <div class="text-sm text-gray-500">
+                  <span class="uppercase tracking-wide text-gray-400 font-semibold mr-2">{{ curso.ano_gd }}</span>
+                  <span>Carga Horária: {{ curso.carga_horaria }}h</span>
+                </div>
               </div>
             </div>
-          </Card>
+            <div class="flex space-x-2">
+              <Button @click="handleEnroll(curso.id)" variant="success" type="button" size="sm">
+                <template #icon><CheckCircleIcon class="h-4 w-4" /></template>
+                Inscrever-se
+              </Button>
+            </div>
+          </div>
         </div>
       </section>
     </div>
+
+    <CertificateUploadModal :show="isUploadModalOpen" :atribuicao-id="selectedAtribuicaoId" @close="isUploadModalOpen = false" @upload-success="onUploadSuccess" />
+    <CourseDetailsModal :show="isDetailsModalOpen" :curso="selectedCourseForDetails" @close="isDetailsModalOpen = false" @send-certificate="handleSendCertificate" />
   </Card>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import api from '../services/api';
 import Card from '../components/Card.vue';
 import Button from '../components/Button.vue';
-import { IdentificationIcon, CheckCircleIcon, XCircleIcon, LinkIcon, AcademicCapIcon } from '@heroicons/vue/24/outline';
+import CourseCard from '../components/CourseCard.vue';
+import CertificateUploadModal from '../components/CertificateUploadModal.vue';
+import CourseDetailsModal from '../components/CourseDetailsModal.vue'; // Import new modal
+import { IdentificationIcon, CheckCircleIcon, XCircleIcon, AcademicCapIcon, ArrowUpTrayIcon, InformationCircleIcon } from '@heroicons/vue/24/outline';
+import { useToast } from 'vue-toastification';
 
 const assignedCourses = ref<any[]>([]);
 const enrolledCourses = ref<any[]>([]);
 const recommendedCourses = ref<any[]>([]);
+const genericCourses = ref<any[]>([]); // New ref for generic courses
 const loading = ref(true);
 const error = ref<Error | null>(null);
+const toast = useToast();
+
+// State for Upload Modal
+const isUploadModalOpen = ref(false);
+const selectedAtribuicaoId = ref<string | null>(null);
+
+// State for Details Modal
+const isDetailsModalOpen = ref(false);
+const selectedCourseForDetails = ref<any | null>(null);
+
+const enrolledCourseIds = computed(() => {
+  return enrolledCourses.value.map(inscricao => inscricao.curso.id);
+});
+
+const filteredAssignedCourses = computed(() => {
+  return assignedCourses.value.filter(atribuicao => !enrolledCourseIds.value.includes(atribuicao.curso.id));
+});
 
 const fetchAssignedCourses = async () => {
   try {
@@ -180,18 +195,17 @@ const fetchRecommendedCourses = async () => {
   }
 };
 
-const getStatusClass = (status: string) => {
-  switch (status) {
-    case 'Pendente':
-      return 'bg-yellow-200 text-yellow-800';
-    case 'Realizado':
-      return 'bg-blue-200 text-blue-800';
-    case 'Validado':
-      return 'bg-green-200 text-green-800';
-    case 'Recusado':
-      return 'bg-red-200 text-red-800';
-    default:
-      return 'bg-gray-200 text-gray-800';
+const fetchGenericCourses = async () => { // New function for generic courses
+  try {
+    loading.value = true;
+    error.value = null;
+    const { data } = await api.get('/api/cursos/genericos');
+    genericCourses.value = data;
+  } catch (err: any) {
+    error.value = err;
+    console.error("Erro ao buscar cursos genéricos:", err);
+  } finally {
+    loading.value = false;
   }
 };
 
@@ -200,7 +214,9 @@ const handleEnroll = async (cursoId: string) => {
     await api.post('/api/inscricoes', { curso_id: cursoId });
     toast.success('Inscrição realizada com sucesso!');
     await fetchEnrolledCourses();
+    await fetchAssignedCourses(); // Refresh assigned courses
     await fetchRecommendedCourses(); // Refresh recommended to remove enrolled course
+    await fetchGenericCourses(); // Refresh generic courses
   } catch (err: any) {
     toast.error(`Erro ao inscrever-se: ${err.response?.data?.detail || err.message}`);
   }
@@ -211,15 +227,48 @@ const handleUnenroll = async (inscricaoId: string) => {
     await api.delete(`/api/inscricoes/${inscricaoId}`);
     toast.success('Desinscrição realizada com sucesso!');
     await fetchEnrolledCourses();
+    await fetchAssignedCourses(); // Refresh assigned courses
     await fetchRecommendedCourses(); // Refresh recommended to potentially show course again
+    await fetchGenericCourses(); // Refresh generic courses
   } catch (err: any) {
     toast.error(`Erro ao desinscrever-se: ${err.response?.data?.detail || err.message}`);
   }
+};
+
+const handleSendCertificate = (atribuicaoId: string) => {
+  isDetailsModalOpen.value = false; // Close details modal if open
+  selectedAtribuicaoId.value = atribuicaoId;
+  isUploadModalOpen.value = true;
+};
+
+const onUploadSuccess = () => {
+  isUploadModalOpen.value = false;
+  fetchAssignedCourses();
+  fetchEnrolledCourses();
+  fetchGenericCourses(); // Refresh generic courses
+};
+
+const openDetailsModal = (item: any) => {
+  // item pode ser uma inscricao ou uma atribuicao
+  const cursoData = item.curso;
+  const status = item.status;
+  const atribuicaoId = item.atribuicao_id || item.id; // atribuicao_id para inscricao, id para atribuicao
+
+  selectedCourseForDetails.value = {
+    ...cursoData,
+    status: status,
+    atribuicaoId: atribuicaoId,
+    certificado_id: item.certificado_id,
+    certificado_file_path: item.certificado_file_path,
+    certificado_link: item.certificado_link,
+  };
+  isDetailsModalOpen.value = true;
 };
 
 onMounted(() => {
   fetchAssignedCourses();
   fetchEnrolledCourses();
   fetchRecommendedCourses();
+  fetchGenericCourses(); // Initial fetch for generic courses
 });
 </script>

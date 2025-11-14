@@ -5,6 +5,13 @@
         <PageHeader title="Gestão de Usuários" :icon="UsersIcon" />
       </template>
 
+      <!-- Reusable Filter Bar -->
+      <FilterBar 
+        :filters="filterDefinitions"
+        @apply-filters="applyFilters"
+        @clear-filters="clearFilters"
+      />
+
       <!-- Loading/Error/Empty States -->
       <div v-if="loading" class="text-center py-10">
         <p>Carregando usuários...</p>
@@ -25,6 +32,13 @@
             </Button>
           </template>
         </DataTable>
+
+        <!-- Reusable Pagination -->
+        <Pagination 
+          v-model:currentPage="currentPage"
+          :total-pages="totalPages"
+          :total-items="totalUsers"
+        />
       </div>
     </Card>
 
@@ -52,8 +66,14 @@
       
       <template #footer>
         <div class="flex justify-end space-x-4">
-          <Button type="button" @click="closeModal" variant="default">Cancelar</Button>
-          <Button form="user-form" type="submit" variant="primary" :loading="isSubmitting">Salvar</Button>
+          <Button type="button" @click="closeModal" variant="default">
+            <template #icon><XMarkIcon class="h-5 w-5" /></template>
+            Cancelar
+          </Button>
+          <Button form="user-form" type="submit" variant="primary" :loading="isSubmitting">
+            <template #icon><CheckIcon class="h-5 w-5" /></template>
+            Salvar
+          </Button>
         </div>
       </template>
     </Modal>
@@ -61,12 +81,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed, watch, defineAsyncComponent } from 'vue';
 import { Form, Field, ErrorMessage } from 'vee-validate';
 import { toTypedSchema } from '@vee-validate/zod';
 import * as z from 'zod';
 import { useToast } from 'vue-toastification';
-import { UsersIcon, PencilIcon } from '@heroicons/vue/24/outline';
+import { 
+  UsersIcon, 
+  PencilIcon, 
+  CheckIcon, 
+  XMarkIcon,
+} from '@heroicons/vue/24/outline';
 
 import api from '../services/api';
 import Card from '../components/Card.vue';
@@ -74,6 +99,12 @@ import Button from '../components/Button.vue';
 import Modal from '../components/Modal.vue';
 import DataTable from '../components/DataTable.vue';
 import PageHeader from '../components/PageHeader.vue';
+import Pagination from '../components/Pagination.vue';
+import FilterBar from '../components/FilterBar.vue';
+
+// Async load icons for filter bar for better performance
+const UserIcon = defineAsyncComponent(() => import('@heroicons/vue/24/outline/UserIcon'));
+const BuildingOffice2Icon = defineAsyncComponent(() => import('@heroicons/vue/24/outline/BuildingOffice2Icon'));
 
 type UserProfile = {
   id: string;
@@ -81,24 +112,46 @@ type UserProfile = {
   email: string;
   lotacao: string;
   perfil: 'Trabalhador' | 'Chefia' | 'UDP';
+  course_count: number;
 };
 
 const toast = useToast();
 
+// Refs for data and state
 const users = ref<UserProfile[]>([]);
+const loading = ref(false);
+const error = ref<Error | null>(null);
 
+// Refs for pagination
+const currentPage = ref(1);
+const itemsPerPage = ref(10);
+const totalUsers = ref(0);
+
+// Ref for filter values
+const activeFilters = ref<Record<string, string>>({});
+
+// Refs for modal
+const isModalOpen = ref(false);
+const isSubmitting = ref(false);
+const editingUser = ref<UserProfile | null>(null);
+
+// Filter definitions for the FilterBar component
+const filterDefinitions = ref([
+  { key: 'nome', label: 'Nome do Usuário', placeholder: 'Filtrar por nome...', icon: UserIcon },
+  { key: 'lotacao', label: 'Lotação', placeholder: 'Filtrar por lotação...', icon: BuildingOffice2Icon },
+]);
+
+// Computed properties
+const totalPages = computed(() => Math.ceil(totalUsers.value / itemsPerPage.value));
+
+// Table headers
 const tableHeaders = ref([
   { text: 'Nome', value: 'displayName' },
   { text: 'Email', value: 'email' },
   { text: 'Lotação', value: 'lotacao' },
   { text: 'Perfil', value: 'perfil' },
+  { text: 'Cursos Atribuídos', value: 'course_count' },
 ]);
-const loading = ref(false);
-const error = ref<Error | null>(null);
-const dataLoaded = ref(false);
-const isModalOpen = ref(false);
-const isSubmitting = ref(false);
-const editingUser = ref<UserProfile | null>(null);
 
 const availableProfiles = ['Trabalhador', 'Chefia', 'UDP'];
 
@@ -114,15 +167,37 @@ const validationSchema = toTypedSchema(
   })
 );
 
+const capitalizeName = (name: string): string => {
+  if (!name) return '';
+  const exceptions = ['de', 'da', 'do', 'dos', 'das'];
+  return name
+    .toLowerCase()
+    .split(' ')
+    .map(word => {
+      return exceptions.includes(word) ? word : word.charAt(0).toUpperCase() + word.slice(1);
+    })
+    .join(' ');
+};
+
 const fetchUsers = async () => {
   try {
     loading.value = true;
-    const { data } = await api.get('/api/admin/usuarios');
-    users.value = data.map((user: any) => ({
+    const skip = (currentPage.value - 1) * itemsPerPage.value;
+    
+    const params: any = { 
+      skip, 
+      limit: itemsPerPage.value,
+      ...activeFilters.value 
+    };
+
+    const { data } = await api.get('/api/admin/usuarios', { params });
+    
+    users.value = data.data.map((user: any) => ({
       ...user,
-      displayName: user.nome,
+      displayName: capitalizeName(user.nome),
+      email: user.email ? user.email.toLowerCase() : 'N/A',
     }));
-    dataLoaded.value = true;
+    totalUsers.value = data.total_count;
   } catch (err: any) {
     error.value = err;
     toast.error('Falha ao carregar os usuários.');
@@ -131,7 +206,15 @@ const fetchUsers = async () => {
   }
 };
 
-const loadData = () => {
+const applyFilters = (filters: Record<string, string>) => {
+  currentPage.value = 1;
+  activeFilters.value = filters;
+  fetchUsers();
+};
+
+const clearFilters = () => {
+  currentPage.value = 1;
+  activeFilters.value = {};
   fetchUsers();
 };
 
@@ -155,7 +238,7 @@ const handleSubmit = async (values: any) => {
   try {
     const payload = {
       user_id: editingUser.value.id,
-      new_perfil: values.perfil,
+      novo_perfil: values.perfil,
     };
 
     await api.put('/api/admin/usuarios/perfil', payload);
@@ -170,18 +253,8 @@ const handleSubmit = async (values: any) => {
   }
 };
 
-const getProfileBadgeClass = (profile: string) => {
-  switch (profile) {
-    case 'UDP':
-      return 'bg-red-100 text-red-800';
-    case 'Chefia':
-      return 'bg-yellow-100 text-yellow-800';
-    case 'Trabalhador':
-    default:
-      return 'bg-blue-100 text-blue-800';
-  }
-};
-onMounted(() => {
-  loadData();
-});
+// Watch for page changes from the Pagination component
+watch(currentPage, fetchUsers);
+
+onMounted(fetchUsers);
 </script>

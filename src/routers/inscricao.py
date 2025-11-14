@@ -9,6 +9,8 @@ from ..auth.auth import auth_handler
 from ..auth.dependencies import get_current_user
 from ..resources.database import get_app_db_session
 
+from ..models import Inscricao, StatusAtribuicao
+
 # --- Pydantic Schemas for Request/Response ---
 
 class CursoForInscricaoResponse(BaseModel):
@@ -17,17 +19,22 @@ class CursoForInscricaoResponse(BaseModel):
     certificadora: str | None = None
     carga_horaria: int | None = None
     link: str | None = None
-    ano_gd: str | None = None # AnoGD enum is converted to string for response
+    ano_gd: str | None = None
 
     class Config:
         from_attributes = True
 
 class InscricaoResponse(BaseModel):
     id: str
-    usuario_id: str
+    user_id: str
     curso_id: str
-    data_inscricao: datetime
+    inscrito_em: datetime
     curso: CursoForInscricaoResponse
+    atribuicao_id: str | None = None
+    status: StatusAtribuicao | None = None
+    certificado_id: str | None = None
+    certificado_file_path: str | None = None
+    certificado_link: str | None = None
 
     class Config:
         from_attributes = True
@@ -43,6 +50,7 @@ router = APIRouter(
     dependencies=[Depends(auth_handler.decode_token)]
 )
 
+@router.post("", response_model=InscricaoResponse, status_code=status.HTTP_201_CREATED)
 @router.post("/", response_model=InscricaoResponse, status_code=status.HTTP_201_CREATED)
 async def inscrever_em_curso(
     inscricao_data: InscricaoCreate,
@@ -62,7 +70,19 @@ async def inscrever_em_curso(
             detail="Usuário já inscrito neste curso."
         )
 
-    return await inscricao_controller.inscrever_usuario_em_curso(db, usuario_id, inscricao_data.curso_id)
+    new_inscricao, new_atribuicao = await inscricao_controller.inscrever_usuario_em_curso(db, usuario_id, inscricao_data.curso_id)
+    
+    # Manually construct the response to include all necessary fields
+    response_data = {
+        "id": new_inscricao.id,
+        "user_id": new_inscricao.user_id,
+        "curso_id": new_inscricao.curso_id,
+        "inscrito_em": new_inscricao.inscrito_em,
+        "curso": new_inscricao.curso,
+        "atribuicao_id": new_atribuicao.id,
+        "status": new_atribuicao.status
+    }
+    return response_data
 
 @router.delete("/{inscricao_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def desinscrever_de_curso(
@@ -75,7 +95,7 @@ async def desinscrever_de_curso(
     """
     # Verificar se a inscrição pertence ao usuário logado antes de deletar
     inscricoes = await inscricao_controller.listar_inscricoes_por_usuario(db, current_user.get("sub"))
-    if not any(insc.id == inscricao_id for insc in inscricoes):
+    if not any(insc['id'] == inscricao_id for insc in inscricoes):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Você não tem permissão para desinscrever-se deste curso."

@@ -6,6 +6,7 @@ interface User {
   username: string;
   groups: string[];
   givenName?: string[];
+  displayName?: string;
   userPrincipalName?: string[];
   title?: string[];
   department?: string[];
@@ -84,19 +85,8 @@ export const useAuthStore = defineStore('auth', () => {
     if (accessToken.value) {
       // If a token exists in localStorage, validate it by fetching user info
       await fetchUser();
-    } else {
-      // If no token, try to get a new one using the refresh token cookie
-      try {
-        const { data } = await api.post('/api/token/refresh');
-        if (data.access_token) {
-          setToken(data.access_token);
-          await fetchUser(); // Fetch user info with the new token
-        }
-      } catch (error) {
-        // It's okay if this fails - it just means the user doesn't have a valid refresh token
-        console.log("No valid refresh token found.");
-      }
     }
+    // If no token, do nothing. The router guard will handle redirection.
   }
 
   return { 

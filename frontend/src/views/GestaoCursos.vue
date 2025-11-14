@@ -51,7 +51,7 @@
         <h2 class="text-xl font-semibold">{{ isEditing ? 'Editar Curso' : 'Criar Novo Curso' }}</h2>
       </template>
       
-      <Form @submit="handleSubmit" :validation-schema="validationSchema" :initial-values="initialFormValues" id="vee-form" class="mt-4">
+      <Form ref="myForm" :key="formKey" @submit="handleSubmit" :validation-schema="validationSchema" :initial-values="initialFormValues" id="vee-form" class="mt-4">
         <div class="grid grid-cols-12 gap-4">
           <div class="col-span-12 form-group mb-4">
             <label for="titulo" class="form-label block text-sm font-medium text-paper-text mb-1">Título do Curso</label>
@@ -60,12 +60,12 @@
           </div>
           
           <div class="col-span-12 md:col-span-6 form-group mb-4">
-            <label for="lotacao" class="form-label block text-sm font-medium text-paper-text mb-1">Lotação</label>
-            <Field name="lotacao" as="select" id="lotacao" class="form-control block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm">
-              <option value="" disabled>Selecione uma lotação</option>
+            <label for="lotacao_id" class="form-label block text-sm font-medium text-paper-text mb-1">Lotação (opcional)</label>
+            <Field name="lotacao_id" as="select" id="lotacao_id" class="form-control block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm">
+              <option value="">Nenhuma lotação</option>
               <option v-for="lotacao in lotacoesList" :key="lotacao" :value="lotacao">{{ lotacao }}</option>
             </Field>
-            <ErrorMessage name="lotacao" class="text-red-500 text-sm mt-1" />
+            <ErrorMessage name="lotacao_id" class="text-red-500 text-sm mt-1" />
           </div>
 
           <div class="col-span-12 md:col-span-6 form-group mb-4">
@@ -93,13 +93,36 @@
             <Field name="link" type="url" id="link" class="form-control block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm" placeholder="https://exemplo.com/inscricao" />
             <ErrorMessage name="link" class="text-red-500 text-sm mt-1" />
           </div>
+
+          <!-- Checkbox for assigning to all -->
+          <div class="col-span-12 form-group mb-4">
+            <div class="flex items-center">
+              <input
+                type="checkbox"
+                id="atribuir_a_todos"
+                class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                :checked="myForm?.values.atribuir_a_todos"
+                @change="myForm?.setFieldValue('atribuir_a_todos', $event.target.checked)"
+              />
+              <label for="atribuir_a_todos" class="ml-2 block text-sm text-gray-900">
+                Atribuir este curso a todos os funcionários deste setor
+              </label>
+            </div>
+            <p class="text-xs text-gray-500 mt-1">Se marcado, o curso será atribuído a todos no setor que ainda não o possuem.</p>
+          </div>
         </div>
       </Form>
       
       <template #footer>
         <div class="flex justify-end space-x-4">
-          <Button type="button" @click="closeModal" variant="default">Cancelar</Button>
-          <Button form="vee-form" type="submit" variant="primary" :loading="isSubmitting">Salvar</Button>
+          <Button type="button" @click="closeModal" variant="default">
+            <template #icon><XMarkIcon class="h-5 w-5" /></template>
+            Cancelar
+          </Button>
+          <Button form="vee-form" type="submit" variant="primary" :loading="isSubmitting">
+            <template #icon><CheckIcon class="h-5 w-5" /></template>
+            Salvar
+          </Button>
         </div>
       </template>
     </Modal>
@@ -112,8 +135,14 @@
       <p>Tem certeza de que deseja excluir este curso? Esta ação não pode ser desfeita.</p>
       <template #footer>
         <div class="flex justify-end space-x-4 mt-6">
-          <Button type="button" @click="closeConfirmModal" variant="default">Cancelar</Button>
-          <Button @click="confirmDelete" variant="danger" :loading="isDeleting">Excluir</Button>
+          <Button type="button" @click="closeConfirmModal" variant="default">
+            <template #icon><XMarkIcon class="h-5 w-5" /></template>
+            Cancelar
+          </Button>
+          <Button @click="confirmDelete" variant="danger" :loading="isDeleting">
+            <template #icon><TrashIcon class="h-5 w-5" /></template>
+            Excluir
+          </Button>
         </div>
       </template>
     </Modal>
@@ -121,15 +150,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import { Form, Field, ErrorMessage } from 'vee-validate';
+import { ref, computed, onMounted, watch, nextTick } from 'vue';
+import { Form, Field, ErrorMessage, useForm, useField } from 'vee-validate';
 import { toTypedSchema } from '@vee-validate/zod';
 import * as z from 'zod';
 import { useToast } from 'vue-toastification';
-import { PlusIcon, AcademicCapIcon, PencilIcon, TrashIcon, LinkIcon } from '@heroicons/vue/24/outline';
+import { PlusIcon, AcademicCapIcon, PencilIcon, TrashIcon, LinkIcon, CheckIcon, XMarkIcon } from '@heroicons/vue/24/outline';
 
 import api from '../services/api';
-import { useAuthStore } from '../stores/auth';
 import Card from '../components/Card.vue';
 import Button from '../components/Button.vue';
 import Modal from '../components/Modal.vue';
@@ -137,11 +165,10 @@ import DataTable from '../components/DataTable.vue';
 import PageHeader from '../components/PageHeader.vue';
 
 const toast = useToast();
-const authStore = useAuthStore();
 
 const tableHeaders = ref([
   { text: 'Título', value: 'titulo' },
-  { text: 'Setor', value: 'lotacao' },
+  { text: 'Setor', value: 'lotacao_id' },
   { text: 'Ano', value: 'ano_gd' },
   { text: 'Inscrição', value: 'link' },
 ]);
@@ -161,28 +188,41 @@ const isDeleting = ref(false);
 
 const initialFormValues = ref({
   titulo: '',
-  lotacao: '',
-  ano_gd: new Date().getFullYear(),
+  lotacao_id: '',
+  ano_gd: new Date().getFullYear().toString(), // ano_gd is now string
   carga_horaria: undefined,
   certificadora: '',
+  link: '',
+  atribuir_a_todos: false,
 });
 
 const validationSchema = toTypedSchema(
   z.object({
     titulo: z.string().nonempty('O título é obrigatório'),
-    lotacao: z.string().nonempty('A lotação é obrigatória'),
-    ano_gd: z.number({ invalid_type_error: 'O ano é obrigatório' }).int().min(1900, 'Ano inválido').max(2100, 'Ano inválido'),
+    lotacao_id: z.string().optional().nullable(), // Made optional
+    ano_gd: z.string().nonempty('O ano é obrigatório'), // Changed to string
     carga_horaria: z.number().int().optional().nullable(),
     certificadora: z.string().optional(),
     link: z.string().url('Link inválido').optional().or(z.literal('')),
+    atribuir_a_todos: z.boolean().default(false),
   })
 );
+
+watch(isModalOpen, (isOpen) => {
+  if (isOpen) {
+    nextTick(() => {
+      if (myForm.value) {
+        myForm.value.setFieldValue('atribuir_a_todos', initialFormValues.value.atribuir_a_todos);
+      }
+    });
+  }
+});
 
 const availableYears = computed(() => {
   const currentYear = new Date().getFullYear();
   const years = [];
   for (let i = 0; i < 5; i++) {
-    years.push(currentYear + i);
+    years.push((currentYear + i).toString()); // Convert to string
   }
   return years;
 });
@@ -215,30 +255,39 @@ const loadData = async () => {
   await fetchLotacoes();
 };
 
+const formKey = ref(0);
+
 const openCreateModal = () => {
   isEditing.value = false;
   editingCursoId.value = null;
   initialFormValues.value = {
     titulo: '',
-    lotacao: '',
-    ano_gd: new Date().getFullYear(),
+    lotacao_id: '',
+    ano_gd: new Date().getFullYear().toString(),
     carga_horaria: undefined,
     certificadora: '',
     link: '',
+    atribuir_a_todos: false,
   };
+  formKey.value++;
   isModalOpen.value = true;
 };
+
+const myForm = ref<any>(null);
 
 const openEditModal = (curso: any) => {
   isEditing.value = true;
   editingCursoId.value = curso.id;
   initialFormValues.value = {
     titulo: curso.titulo,
-    lotacao: curso.lotacao,
+    lotacao_id: curso.lotacao_id || '', // Use lotacao_id and default to empty string
     ano_gd: curso.ano_gd,
     carga_horaria: curso.carga_horaria,
     certificadora: curso.certificadora,
+    link: curso.link,
+    atribuir_a_todos: curso.atribuir_a_todos,
   };
+  formKey.value++;
   isModalOpen.value = true;
 };
 
@@ -273,13 +322,14 @@ const confirmDelete = async () => {
 };
 
 const handleSubmit = async (values: any) => {
+  console.log('Submitting values:', values);
   isSubmitting.value = true;
   try {
     const payload = {
       ...values,
-      ano_gd: Number(values.ano_gd),
+      // ano_gd is already string, no need to convert to Number
       carga_horaria: values.carga_horaria ? Number(values.carga_horaria) : null,
-      chefia_id: authStore.user?.username,
+      // chefia_id removed as it's no longer in the model
     };
 
     if (isEditing.value) {

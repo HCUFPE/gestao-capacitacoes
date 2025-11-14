@@ -75,7 +75,7 @@ async def validar_atribuicao(
     await db.execute(stmt)
     await db.commit()
 
-async def listar_atribuicoes_por_usuario(db: AsyncSession, user_id: str) -> List[Atribuicao]:
+async def listar_atribuicoes_por_usuario(db: AsyncSession, user_id: str) -> List[dict]:
     """
     Lista todas as atribuições de um usuário, incluindo os detalhes do curso.
     """
@@ -85,4 +85,38 @@ async def listar_atribuicoes_por_usuario(db: AsyncSession, user_id: str) -> List
         .options(selectinload(Atribuicao.curso)) # Eager load para incluir detalhes do curso
     )
     result = await db.execute(stmt)
-    return result.scalars().all()
+    atribuicoes = result.scalars().all()
+
+    response_data = []
+    for atribuicao in atribuicoes:
+        if atribuicao.curso:
+            atribuicao_data = {
+                "id": atribuicao.id,
+                "user_id": atribuicao.user_id,
+                "curso_id": atribuicao.curso_id,
+                "status": atribuicao.status,
+                "atribuido_em": atribuicao.atribuido_em,
+                "curso": {
+                    "id": atribuicao.curso.id,
+                    "titulo": atribuicao.curso.titulo,
+                    "certificadora": atribuicao.curso.certificadora,
+                    "carga_horaria": atribuicao.curso.carga_horaria,
+                    "link": atribuicao.curso.link,
+                    "ano_gd": atribuicao.curso.ano_gd,
+                    "lotacao_id": atribuicao.curso.lotacao_id,
+                }
+            }
+            response_data.append(atribuicao_data)
+            
+    return response_data
+
+async def obter_atribuicao_por_id(db: AsyncSession, atribuicao_id: str) -> Atribuicao | None:
+    """
+    Obtém uma atribuição pelo ID, incluindo os detalhes do curso.
+    """
+    result = await db.execute(
+        select(Atribuicao)
+        .where(Atribuicao.id == atribuicao_id)
+        .options(selectinload(Atribuicao.curso))
+    )
+    return result.scalars().first()

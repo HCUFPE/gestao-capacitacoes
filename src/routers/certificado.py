@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 from pydantic import BaseModel
 import shutil
 import os
+import uuid
 
 from ..controllers import certificado_controller, atribuicao_controller
 from ..auth.auth import auth_handler
@@ -42,7 +43,7 @@ UPLOADS_DIR = "src/static/uploads"
 
 @router.post("/upload", response_model=CertificadoResponse, dependencies=[Depends(auth_handler.decode_token)])
 async def registrar_certificado_upload(
-    atribuicao_id: str,
+    atribuicao_id: str = Form(...),
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_app_db_session)
 ):
@@ -52,13 +53,22 @@ async def registrar_certificado_upload(
     # Garante que o diretório de uploads existe
     os.makedirs(UPLOADS_DIR, exist_ok=True)
     
+    # Gera um nome de arquivo único para evitar sobrescrita
+    file_extension = os.path.splitext(file.filename)[1]
+    unique_filename = f"{uuid.uuid4()}{file_extension}"
+    file_path = os.path.join(UPLOADS_DIR, unique_filename)
+    
     # Salva o arquivo
-    file_path = os.path.join(UPLOADS_DIR, f"{atribuicao_id}_{file.filename}")
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
     # Cria a entrada do certificado no banco
-    certificado_data = {"file_path": file_path}
+    # Obter o curso_id da atribuição
+    atribuicao = await atribuicao_controller.obter_atribuicao_por_id(db, atribuicao_id)
+    if not atribuicao:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Atribuição não encontrada")
+
+    certificado_data = {"file_path": file_path, "curso_id": atribuicao.curso_id}
     novo_certificado = await certificado_controller.registrar_certificado(db, certificado_data)
 
     # Atualiza a atribuição

@@ -1,52 +1,74 @@
-from typing import List, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, desc
+from typing import List, Dict, Any
 
-from ..models import Curso, Atribuicao, StatusAtribuicao, Usuario
+from ..models import Curso, Inscricao, Atribuicao, Usuario, StatusAtribuicao
 
-async def relatorio_cursos_por_lotacao(db: AsyncSession, lotacao: str) -> List[Dict[str, Any]]:
+async def listar_cursos_mais_inscritos_udp(db: AsyncSession, limit: int = 10) -> List[Dict[str, Any]]:
     """
-    Gera um relatório de cursos e seu status de conclusão para uma dada lotação.
+    Lista os cursos mais inscritos/atribuídos para a UDP.
     """
-    # Subquery para contar atribuições concluídas (Validadas) por curso
-    subquery_concluidos = (
-        select(
-            Atribuicao.curso_id,
-            func.count(Atribuicao.id).label("concluidos")
-        )
-        .join(Usuario, Atribuicao.user_id == Usuario.id)
-        .where(
-            Usuario.lotacao == lotacao,
-            Atribuicao.status == StatusAtribuicao.VALIDADO
-        )
-        .group_by(Atribuicao.curso_id)
-        .subquery()
-    )
-
-    # Subquery para contar total de atribuições por curso
-    subquery_total = (
-        select(
-            Atribuicao.curso_id,
-            func.count(Atribuicao.id).label("total")
-        )
-        .join(Usuario, Atribuicao.user_id == Usuario.id)
-        .where(Usuario.lotacao == lotacao)
-        .group_by(Atribuicao.curso_id)
-        .subquery()
-    )
-
-    # Query principal
-    query = (
+    stmt = (
         select(
             Curso.titulo,
-            Curso.ano_gd,
-            func.coalesce(subquery_total.c.total, 0).label("total_atribuicoes"),
-            func.coalesce(subquery_concluidos.c.concluidos, 0).label("total_concluidos")
+            func.count(Inscricao.id).label("total_inscricoes"),
+            func.count(Atribuicao.id).label("total_atribuicoes")
         )
-        .join_from(Curso, subquery_total, Curso.id == subquery_total.c.curso_id, isouter=True)
-        .join_from(Curso, subquery_concluidos, Curso.id == subquery_concluidos.c.curso_id, isouter=True)
-        .where(Curso.lotacao == lotacao)
+        .outerjoin(Inscricao, Curso.id == Inscricao.curso_id)
+        .outerjoin(Atribuicao, Curso.id == Atribuicao.curso_id)
+        .group_by(Curso.id, Curso.titulo)
+        .order_by(desc("total_inscricoes"), desc("total_atribuicoes"))
+        .limit(limit)
     )
+    result = await db.execute(stmt)
+    return [
+        {
+            "titulo": r.titulo,
+            "total_inscricoes": r.total_inscricoes,
+            "total_atribuicoes": r.total_atribuicoes,
+        }
+        for r in result.all()
+    ]
 
-    result = await db.execute(query)
-    return [dict(row) for row in result.mappings()]
+# Placeholder para outras funções de relatório
+async def get_relatorio_status_geral_udp(db: AsyncSession) -> List[Dict[str, Any]]:
+    """
+    Placeholder para o relatório de status geral das capacitações para a UDP.
+    """
+    return []
+
+async def get_relatorio_conformidade_lotacao_udp(db: AsyncSession) -> List[Dict[str, Any]]:
+    """
+    Placeholder para o relatório de conformidade por lotação para a UDP.
+    """
+    return []
+
+async def get_relatorio_certificados_pendentes_udp(db: AsyncSession) -> List[Dict[str, Any]]:
+    """
+    Placeholder para o relatório de certificados pendentes de validação para a UDP.
+    """
+    return []
+
+async def get_relatorio_usuarios_por_perfil_lotacao_udp(db: AsyncSession) -> List[Dict[str, Any]]:
+    """
+    Placeholder para o relatório de usuários por perfil e lotação para a UDP.
+    """
+    return []
+
+async def get_relatorio_status_lotacao_chefia(db: AsyncSession, lotacao: str) -> List[Dict[str, Any]]:
+    """
+    Placeholder para o relatório de status de cursos da minha lotação para a Chefia.
+    """
+    return []
+
+async def get_relatorio_progresso_individual_chefia(db: AsyncSession, lotacao: str) -> List[Dict[str, Any]]:
+    """
+    Placeholder para o relatório de progresso individual de subordinados para a Chefia.
+    """
+    return []
+
+async def get_relatorio_certificados_pendentes_chefia(db: AsyncSession, lotacao: str) -> List[Dict[str, Any]]:
+    """
+    Placeholder para o relatório de certificados pendentes de validação para a Chefia.
+    """
+    return []

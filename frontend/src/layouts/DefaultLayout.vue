@@ -2,7 +2,7 @@
   <div class="relative min-h-screen md:flex">
     <!-- Mobile Menu -->
     <div class="bg-paper-sidebar text-gray-100 flex justify-between md:hidden">
-      <router-link to="/" class="block p-4 text-white font-bold">My App</router-link>
+      <router-link to="/" class="block p-4 text-white font-bold">Capacitações EAD</router-link>
       <button @click="sidebarOpen = !sidebarOpen" class="p-4 focus:outline-none focus:bg-paper-active-link">
         <Bars3Icon class="h-6 w-6" />
       </button>
@@ -18,188 +18,95 @@
         <div class="border-t border-white border-opacity-20"></div>
       </div>
 
-            <nav>
+      <nav>
+        <router-link to="/" class="flex items-center space-x-2 py-2.5 px-4 rounded transition duration-200 hover:bg-paper-active-link hover:text-white">
+          <HomeIcon class="h-6 w-6"/>
+          <span>Home</span>
+        </router-link>
 
-              <router-link to="/" class="flex items-center space-x-2 py-2.5 px-4 rounded transition duration-200 hover:bg-paper-active-link hover:text-white">
+        <router-link v-if="authStore.isAuthenticated" to="/meus-cursos" class="flex items-center space-x-2 py-2.5 px-4 rounded transition duration-200 hover:bg-paper-active-link hover:text-white">
+          <AcademicCapIcon class="h-6 w-6" />
+          <span>Meus Cursos</span>
+        </router-link>
 
-                <HomeIcon class="h-6 w-6"/>
+        <router-link v-if="authStore.isManagerOrAdmin" to="/gestao-cursos" class="flex items-center space-x-2 py-2.5 px-4 rounded transition duration-200 hover:bg-paper-active-link hover:text-white">
+          <ClipboardDocumentListIcon class="h-6 w-6" />
+          <span>Gestão de Cursos</span>
+        </router-link>
 
-                <span>Home</span>
+        <router-link v-if="authStore.isUdp" to="/gestao-usuarios" class="flex items-center space-x-2 py-2.5 px-4 rounded transition duration-200 hover:bg-paper-active-link hover:text-white">
+          <UserGroupIcon class="h-6 w-6" />
+          <span>Gestão de Usuários</span>
+        </router-link>
 
-              </router-link>
-
-      
-
-              <router-link v-if="authStore.isAuthenticated" to="/meus-cursos" class="flex items-center space-x-2 py-2.5 px-4 rounded transition duration-200 hover:bg-paper-active-link hover:text-white">
-
-                <AcademicCapIcon class="h-6 w-6" />
-
-                <span>Meus Cursos</span>
-
-              </router-link>
-
-      
-
-              <router-link v-if="authStore.isManagerOrAdmin" to="/gestao-cursos" class="flex items-center space-x-2 py-2.5 px-4 rounded transition duration-200 hover:bg-paper-active-link hover:text-white">
-
-                <ClipboardDocumentListIcon class="h-6 w-6" />
-
-                <span>Gestão de Cursos</span>
-
-              </router-link>
-
-      
-
-              <router-link v-if="authStore.isUdp" to="/gestao-usuarios" class="flex items-center space-x-2 py-2.5 px-4 rounded transition duration-200 hover:bg-paper-active-link hover:text-white">
-
-                <UserGroupIcon class="h-6 w-6" />
-
-                <span>Gestão de Usuários</span>
-
-              </router-link>
-
-      
-
-              <div class="px-4 my-6">
-
-                <div class="border-t border-white border-opacity-20"></div>
-
-              </div>
-
-      
-
-              <router-link to="/exemplos" class="flex items-center space-x-2 py-2.5 px-4 rounded transition duration-200 hover:bg-paper-active-link hover:text-white">
-
-                <BeakerIcon class="h-6 w-6" />
-
-                <span>Exemplos</span>
-
-              </router-link>
-
-              
-
-              <router-link v-if="authStore.isUdp" to="/admin" class="flex items-center space-x-2 py-2.5 px-4 rounded transition duration-200 hover:bg-paper-active-link hover:text-white">
-
-                <ShieldCheckIcon class="h-6 w-6"/>
-
-                <span>Admin</span>
-
-              </router-link>
-
-            </nav>
-
-          </aside>
-
-      
-
-          <!-- Content -->
-
-          <div class="flex-1 flex flex-col bg-paper-bg">
-
-            <header class="flex justify-between items-center p-6 bg-transparent border-b border-gray-300">
-
-              <div>
-
-                <h1 class="text-2xl font-semibold text-paper-text">{{ $route.name }}</h1>
-
-              </div>
-
-              <div>
-
-                <router-link v-if="!authStore.isAuthenticated" to="/login">
-
-                  <Button variant="primary">
-
-                    <template #icon>
-
-                      <ArrowRightOnRectangleIcon class="h-5 w-5" />
-
-                    </template>
-
-                    Login
-
-                  </Button>
-
-                </router-link>
-
-                <ProfileDropdown v-else />
-
-              </div>
-
-            </header>
-
-                        <main class="flex-1">
-
-                          <div class="container mx-auto px-4 py-4 md:py-6">
-
-                            <router-view />
-
-                          </div>
-
-                        </main>
-
-          </div>
-
+        <!-- Novos links para Relatórios -->
+        <div class="px-4 my-6">
+          <div class="border-t border-white border-opacity-20"></div>
+          <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider mt-4 block">Relatórios</span>
         </div>
+        <router-link v-if="authStore.isUdp" to="/relatorios/udp" class="flex items-center space-x-2 py-2.5 px-4 rounded transition duration-200 hover:bg-paper-active-link hover:text-white">
+          <ChartBarIcon class="h-6 w-6" />
+          <span>Relatórios UDP</span>
+        </router-link>
 
-      </template>
+        <router-link v-if="authStore.isManagerOrAdmin" to="/relatorios/chefia" class="flex items-center space-x-2 py-2.5 px-4 rounded transition duration-200 hover:bg-paper-active-link hover:text-white">
+          <ChartBarIcon class="h-6 w-6" />
+          <span>Relatórios Chefia</span>
+        </router-link>
+      </nav>
+    </aside>
 
-      
+    <!-- Content -->
+    <div class="flex-1 flex flex-col bg-paper-bg z-10">
+      <header class="flex justify-between items-center p-6 bg-transparent border-b border-gray-300">
+        <div>
+          <h1 class="text-2xl font-semibold text-paper-text">{{ $route.name }}</h1>
+        </div>
+        <div>
+          <router-link v-if="!authStore.isAuthenticated" to="/login">
+            <Button variant="primary">
+              <template #icon>
+                <ArrowRightOnRectangleIcon class="h-5 w-5" />
+              </template>
+              Login
+            </Button>
+          </router-link>
+          <ProfileDropdown v-else />
+        </div>
+      </header>
+      <main class="flex-1">
+        <div class="container mx-auto px-4 py-4 md:py-6">
+          <router-view />
+        </div>
+      </main>
+    </div>
+  </div>
+</template>
 
-      <script setup lang="ts">
+<script setup lang="ts">
+import { ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import {
+  HomeIcon,
+  CubeTransparentIcon,
+  Bars3Icon,
+  ArrowRightOnRectangleIcon,
+  AcademicCapIcon,
+  ClipboardDocumentListIcon,
+  UserGroupIcon,
+  ChartBarIcon,
+} from '@heroicons/vue/24/outline';
+import ProfileDropdown from '../components/ProfileDropdown.vue';
+import Button from '../components/Button.vue';
+import { useAuthStore } from '../stores/auth';
 
-      import { ref, watch } from 'vue';
+const sidebarOpen = ref(false);
+const route = useRoute();
+const router = useRouter();
+const authStore = useAuthStore();
 
-      import { useRoute, useRouter } from 'vue-router';
-
-      import {
-
-        HomeIcon,
-
-        BeakerIcon,
-
-        ShieldCheckIcon,
-
-        CubeTransparentIcon,
-
-        Bars3Icon,
-
-        ArrowRightOnRectangleIcon,
-
-        AcademicCapIcon,
-
-        ClipboardDocumentListIcon,
-
-        UserGroupIcon,
-
-      } from '@heroicons/vue/24/outline';
-
-      import ProfileDropdown from '../components/ProfileDropdown.vue';
-
-      import Button from '../components/Button.vue';
-
-                  import { useAuthStore } from '../stores/auth';
-
-                  
-
-                  const sidebarOpen = ref(false);
-
-                  const route = useRoute();
-
-                  const router = useRouter();
-
-                  const authStore = useAuthStore();
-
-                  
-
-                  // Close sidebar on route change
-
-                  watch(() => route.path, () => {
-
-        sidebarOpen.value = false;
-
-      });
-
-      </script>
-
-      
+// Close sidebar on route change
+watch(() => route.path, () => {
+  sidebarOpen.value = false;
+});
+</script>

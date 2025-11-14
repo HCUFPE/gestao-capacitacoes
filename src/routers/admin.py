@@ -25,6 +25,8 @@ class UserProfileResponse(BaseModel):
     class Config:
         from_attributes = True
 
+from ..schemas.pagination_schema import PaginatedResponse
+
 # --- Router Definition ---
 
 router = APIRouter(
@@ -49,24 +51,16 @@ async def atualizar_perfil_usuario(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuário não encontrado")
     return updated_user
 
-@router.get("/usuarios", response_model=List[UserProfileResponse], dependencies=[Depends(is_udp)])
-
+@router.get("/usuarios", response_model=PaginatedResponse[UserProfileResponse], dependencies=[Depends(is_udp)])
 async def listar_todos_usuarios(
-
     nome: str | None = None,
-
     lotacao: str | None = None,
-
+    skip: int = 0,
+    limit: int = 10,
     db: AsyncSession = Depends(get_app_db_session)
-
 ):
-
     """
-
-    Lista todos os usuários cadastrados no sistema, com filtros opcionais. 
-
+    Lista todos os usuários cadastrados no sistema de forma paginada, com filtros opcionais. 
     (Requer perfil de UDP)
-
     """
-
-    return await usuario_controller.listar_usuarios(db, nome=nome, lotacao=lotacao)
+    return await usuario_controller.listar_usuarios(db, nome=nome, lotacao=lotacao, skip=skip, limit=limit)

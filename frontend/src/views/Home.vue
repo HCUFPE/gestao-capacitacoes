@@ -1,35 +1,95 @@
 <template>
-  <Card>
-    <template #header>
-      <div class="flex items-center space-x-2">
-        <HomeIcon class="h-6 w-6" />
-        <h1 class="text-2xl font-bold">Bem-vindo ao Portal de Capacitações EAD!</h1>
-      </div>
-    </template>
-    <p class="mt-4 text-paper-text">
-      Esta plataforma foi desenvolvida para centralizar o gerenciamento de capacitações EAD,
-      facilitando o processo de definição, execução e validação de cursos para fins de Gestão de Desempenho (GD).
-    </p>
-    <p class="mt-2 text-paper-text">
-      Aqui você poderá acompanhar seus cursos atribuídos, registrar certificados e, se for uma chefia,
-      gerenciar as capacitações da sua equipe.
-    </p>
-    <div class="mt-6">
-      <router-link v-if="authStore.isAuthenticated" to="/meus-cursos">
-        <Button variant="primary">Ver Meus Cursos</Button>
+  <div>
+    <!-- Hero Welcome Card -->
+    <div class="p-6 md:p-8 rounded-lg bg-paper-primary text-white shadow-lg">
+      <h1 class="text-3xl md:text-4xl font-bold">Bem-vindo(a), {{ authStore.user?.displayName || 'Usuário' }}!</h1>
+      <p class="mt-2 text-lg text-indigo-100">
+        Acompanhe o progresso das capacitações da sua equipe e as suas.
+      </p>
+    </div>
+
+    <!-- Stats Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-8">
+      <StatCard v-for="stat in stats" :key="stat.name" :item="stat" />
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="mt-8 flex flex-col sm:flex-row gap-4">
+      <router-link v-if="authStore.isAuthenticated" to="/meus-cursos" class="w-full sm:w-auto">
+        <Button variant="primary" class="w-full justify-center">
+          <template #icon><AcademicCapIcon class="h-5 w-5" /></template>
+          Ver Meus Cursos
+        </Button>
       </router-link>
-      <router-link v-else to="/login">
-        <Button variant="primary">Fazer Login</Button>
+      <router-link v-if="authStore.isManagerOrAdmin" to="/gestao-cursos" class="w-full sm:w-auto">
+        <Button variant="secondary" class="w-full justify-center">
+          <template #icon><ClipboardDocumentListIcon class="h-5 w-5" /></template>
+          Gerenciar Cursos
+        </Button>
       </router-link>
     </div>
-  </Card>
+  </div>
 </template>
 
 <script setup lang="ts">
-import Card from '../components/Card.vue';
-import Button from '../components/Button.vue';
+import { ref, onMounted, computed } from 'vue';
 import { useAuthStore } from '../stores/auth';
-import { HomeIcon } from '@heroicons/vue/24/outline';
+import api from '../services/api';
+
+import Button from '../components/Button.vue';
+import StatCard from '../components/StatCard.vue'; // We will create this component
+
+import { 
+  AcademicCapIcon,
+  ClipboardDocumentListIcon,
+  UsersIcon,
+  CheckBadgeIcon,
+} from '@heroicons/vue/24/outline';
 
 const authStore = useAuthStore();
+
+const rawStats = ref({
+  total_cursos: 0,
+  total_inscricoes: 0,
+  total_certificados_validados: 0,
+  total_usuarios: 0,
+});
+
+const stats = computed(() => [
+  {
+    name: 'Cursos Disponíveis',
+    value: rawStats.value.total_cursos,
+    icon: AcademicCapIcon,
+    color: 'text-blue-500',
+  },
+  {
+    name: 'Inscrições Realizadas',
+    value: rawStats.value.total_inscricoes,
+    icon: ClipboardDocumentListIcon,
+    color: 'text-indigo-500',
+  },
+  {
+    name: 'Certificados Validados',
+    value: rawStats.value.total_certificados_validados,
+    icon: CheckBadgeIcon,
+    color: 'text-green-500',
+  },
+  {
+    name: 'Usuários na Plataforma',
+    value: rawStats.value.total_usuarios,
+    icon: UsersIcon,
+    color: 'text-yellow-500',
+  },
+]);
+
+const fetchStats = async () => {
+  try {
+    const { data } = await api.get('/api/utils/stats');
+    rawStats.value = data;
+  } catch (error) {
+    console.error("Falha ao carregar estatísticas:", error);
+  }
+};
+
+onMounted(fetchStats);
 </script>
