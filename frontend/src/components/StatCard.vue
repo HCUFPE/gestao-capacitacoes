@@ -28,12 +28,13 @@ const props = defineProps({
 });
 
 const iconBgColor = computed(() => {
-  // A simple way to map text color to a light background color
   const color = props.item.color || 'text-gray-500';
   if (color.includes('blue')) return 'bg-blue-100';
   if (color.includes('indigo')) return 'bg-indigo-100';
   if (color.includes('green')) return 'bg-green-100';
   if (color.includes('yellow')) return 'bg-yellow-100';
+  if (color.includes('cyan')) return 'bg-cyan-100';
+  if (color.includes('red')) return 'bg-red-100';
   return 'bg-gray-100';
 });
 </script>

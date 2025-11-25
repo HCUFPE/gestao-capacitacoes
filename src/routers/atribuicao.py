@@ -6,7 +6,7 @@ from datetime import datetime
 
 from ..controllers import atribuicao_controller
 from ..auth.auth import auth_handler
-from ..auth.dependencies import get_current_user
+from ..auth.dependencies import get_current_user, is_chefia
 from ..resources.database import get_app_db_session
 from ..models import StatusAtribuicao
 
@@ -31,6 +31,13 @@ class AtribuicaoResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class AtribuicaoPendenteResponse(BaseModel):
+    atribuicao_id: str
+    data_submissao: datetime
+    usuario_nome: str
+    curso_titulo: str
+    certificado_id: str | None = None
+
 # --- Router Definition ---
 
 router = APIRouter(
@@ -48,3 +55,16 @@ async def listar_minhas_atribuicoes(
     """
     user_id = current_user.get("sub") # 'sub' é o sAMAccountName no nosso token
     return await atribuicao_controller.listar_atribuicoes_por_usuario(db, user_id)
+
+@router.get("/pendentes-validacao", response_model=List[AtribuicaoPendenteResponse], dependencies=[Depends(is_chefia)])
+async def get_atribuicoes_pendentes_validacao(
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_app_db_session)
+):
+    """
+    (Chefia) Lista as atribuições com certificados submetidos que aguardam validação.
+    """
+    lotacao = current_user.get("lotacao")
+    if not lotacao:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Lotação do usuário não encontrada.")
+    return await atribuicao_controller.listar_atribuicoes_pendentes_validacao(db, lotacao)

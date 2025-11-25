@@ -120,3 +120,36 @@ async def obter_atribuicao_por_id(db: AsyncSession, atribuicao_id: str) -> Atrib
         .options(selectinload(Atribuicao.curso))
     )
     return result.scalars().first()
+
+async def listar_atribuicoes_pendentes_validacao(db: AsyncSession, lotacao: str) -> List[dict]:
+    """
+    Lista atribuições com status 'REALIZADO' para uma lotação específica,
+    aguardando validação.
+    """
+    stmt = (
+        select(Atribuicao)
+        .join(Usuario, Atribuicao.user_id == Usuario.id)
+        .where(
+            Atribuicao.status == StatusAtribuicao.REALIZADO,
+            Usuario.lotacao == lotacao
+        )
+        .options(
+            selectinload(Atribuicao.curso),
+            selectinload(Atribuicao.usuario)
+        )
+        .order_by(Atribuicao.data_conclusao.asc())
+    )
+    result = await db.execute(stmt)
+    atribuicoes = result.scalars().unique().all()
+
+    # Estruturar a resposta para o frontend
+    response = []
+    for atribuicao in atribuicoes:
+        response.append({
+            "atribuicao_id": atribuicao.id,
+            "data_submissao": atribuicao.data_conclusao,
+            "usuario_nome": atribuicao.usuario.nome,
+            "curso_titulo": atribuicao.curso.titulo,
+            "certificado_id": atribuicao.certificado_id,
+        })
+    return response

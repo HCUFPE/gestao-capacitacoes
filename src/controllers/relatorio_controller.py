@@ -33,15 +33,64 @@ async def listar_cursos_mais_inscritos_udp(db: AsyncSession, limit: int = 10) ->
 # Placeholder para outras funções de relatório
 async def get_relatorio_status_geral_udp(db: AsyncSession) -> List[Dict[str, Any]]:
     """
-    Placeholder para o relatório de status geral das capacitações para a UDP.
+    Gera um relatório com a contagem de atribuições para cada status.
     """
-    return []
+    stmt = (
+        select(
+            Atribuicao.status,
+            func.count(Atribuicao.id).label("total")
+        )
+        .group_by(Atribuicao.status)
+    )
+    result = await db.execute(stmt)
+    
+    # Inicializa um dicionário com todos os status para garantir que todos apareçam no resultado
+    status_counts = {status.value: 0 for status in StatusAtribuicao}
+    
+    for row in result.all():
+        status_counts[row.status] = row.total
+        
+    # Converte o dicionário para o formato de lista de dicionários esperado
+    return [{"name": status, "value": count} for status, count in status_counts.items()]
 
 async def get_relatorio_conformidade_lotacao_udp(db: AsyncSession) -> List[Dict[str, Any]]:
     """
-    Placeholder para o relatório de conformidade por lotação para a UDP.
+    Gera um relatório de conformidade por lotação, contando as atribuições por status.
     """
-    return []
+    stmt = (
+        select(
+            Usuario.lotacao,
+            Atribuicao.status,
+            func.count(Atribuicao.id).label("total")
+        )
+        .join(Usuario, Atribuicao.user_id == Usuario.id)
+        .group_by(Usuario.lotacao, Atribuicao.status)
+        .order_by(Usuario.lotacao, Atribuicao.status)
+    )
+    result = await db.execute(stmt)
+    
+    conformidade_por_lotacao: Dict[str, Dict[str, Any]] = {}
+    
+    for row in result.all():
+        lotacao = row.lotacao
+        status = row.status
+        total = row.total
+        
+        if lotacao not in conformidade_por_lotacao:
+            conformidade_por_lotacao[lotacao] = {
+                "lotacao": lotacao,
+                "Pendente": 0,
+                "Em Andamento": 0,
+                "Realizado": 0,
+                "Validado": 0,
+                "Recusado": 0,
+                "Total Atribuições": 0,
+            }
+        
+        conformidade_por_lotacao[lotacao][status] = total
+        conformidade_por_lotacao[lotacao]["Total Atribuições"] += total
+            
+    return list(conformidade_por_lotacao.values())
 
 async def get_relatorio_certificados_pendentes_udp(db: AsyncSession) -> List[Dict[str, Any]]:
     """

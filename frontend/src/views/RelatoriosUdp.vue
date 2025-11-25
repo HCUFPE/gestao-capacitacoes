@@ -1,52 +1,81 @@
 <template>
-  <Card>
-    <template #header>
-      <div class="flex items-center space-x-2">
-        <ChartBarIcon class="h-6 w-6" />
-        <h1 class="text-2xl font-bold">Relatórios UDP</h1>
+  <div class="space-y-8">
+    <PageHeader title="Relatórios UDP" />
+
+    <!-- Relatório 1: Status Geral das Capacitações -->
+    <Card variant="primary">
+      <template #header>
+        <h2 class="text-xl font-semibold">Status Geral das Capacitações</h2>
+      </template>
+      <div v-if="loading" class="text-center">Carregando...</div>
+      <div v-else-if="error" class="text-red-500">Erro ao carregar dados.</div>
+      <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
+        <StatCard v-for="stat in statusGeral" :key="stat.name" :item="stat" />
       </div>
-    </template>
+    </Card>
 
-    <div v-if="loading" class="text-center">
-      <p>Carregando relatórios...</p>
-    </div>
-
-    <div v-else-if="error" class="text-center text-red-500">
-      <p>Ocorreu um erro ao carregar os relatórios: {{ error.message }}</p>
-    </div>
-
-    <div v-else class="space-y-8">
-      <!-- Relatório 1: Cursos Mais Inscritos/Atribuídos -->
-      <section>
-        <h2 class="text-xl font-semibold mb-4">Cursos Mais Inscritos/Atribuídos</h2>
-        <DataTable :headers="cursosPopularesHeaders" :items="cursosPopulares" :loading="false" :error="null">
-          <template #item-titulo="{ item }">
-            <span class="font-medium">{{ item.titulo }}</span>
-          </template>
-        </DataTable>
-      </section>
-
-      <!-- Placeholder para outros relatórios UDP -->
-      <section>
-        <h2 class="text-xl font-semibold mb-4">Status Geral das Capacitações</h2>
-        <p>Conteúdo do relatório de status geral...</p>
-      </section>
-    </div>
-  </Card>
+    <!-- Relatório 2: Cursos Mais Populares -->
+    <Card>
+      <template #header>
+        <h2 class="text-xl font-semibold">Top 10 Cursos Mais Populares</h2>
+      </template>
+      <DataTable :headers="cursosPopularesHeaders" :items="cursosPopulares" :loading="loading" :error="error">
+        <template #item-titulo="{ item }">
+          <span class="font-medium">{{ item.titulo }}</span>
+        </template>
+      </DataTable>
+    </Card>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import api from '../services/api';
 import Card from '../components/Card.vue';
+import StatCard from '../components/StatCard.vue';
 import DataTable from '../components/DataTable.vue';
-import { ChartBarIcon } from '@heroicons/vue/24/outline';
+import PageHeader from '../components/PageHeader.vue';
 import { useToast } from 'vue-toastification';
+import {
+  ClockIcon,
+  PlayIcon,
+  CheckCircleIcon,
+  ShieldCheckIcon,
+  XCircleIcon,
+} from '@heroicons/vue/24/outline';
 
 const loading = ref(true);
 const error = ref<Error | null>(null);
 const toast = useToast();
 
+// --- Status Geral ---
+const rawStatusGeral = ref<Array<{ name: string; value: number }>>([]);
+const statusGeral = computed(() => {
+  const iconMap: { [key: string]: any } = {
+    pendente: { icon: ClockIcon, color: 'text-yellow-500' },
+    'em andamento': { icon: PlayIcon, color: 'text-blue-500' },
+    realizado: { icon: CheckCircleIcon, color: 'text-cyan-500' },
+    validado: { icon: ShieldCheckIcon, color: 'text-green-500' },
+    recusado: { icon: XCircleIcon, color: 'text-red-500' },
+  };
+  return rawStatusGeral.value.map(stat => ({
+    ...stat,
+    name: stat.name.charAt(0).toUpperCase() + stat.name.slice(1), // Capitalize
+    ...iconMap[stat.name.toLowerCase()],
+  }));
+});
+
+const fetchStatusGeral = async () => {
+  try {
+    const { data } = await api.get('/api/relatorios/udp/status-geral');
+    rawStatusGeral.value = data;
+  } catch (err: any) {
+    error.value = err;
+    toast.error(`Erro ao carregar status geral: ${err.response?.data?.detail || err.message}`);
+  }
+};
+
+// --- Cursos Populares ---
 const cursosPopulares = ref<any[]>([]);
 const cursosPopularesHeaders = [
   { text: 'Título do Curso', value: 'titulo' },
@@ -67,8 +96,8 @@ const fetchCursosPopulares = async () => {
 onMounted(async () => {
   loading.value = true;
   await Promise.all([
+    fetchStatusGeral(),
     fetchCursosPopulares(),
-    // Chamar outras funções de fetch para relatórios UDP aqui
   ]);
   loading.value = false;
 });

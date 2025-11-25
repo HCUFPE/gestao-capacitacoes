@@ -29,16 +29,20 @@
           <span>Meus Cursos</span>
         </router-link>
 
-        <router-link v-if="authStore.isManagerOrAdmin" to="/gestao-cursos" class="flex items-center space-x-2 py-2.5 px-4 rounded transition duration-200 hover:bg-paper-active-link hover:text-white">
-          <ClipboardDocumentListIcon class="h-6 w-6" />
-          <span>Gestão de Cursos</span>
-        </router-link>
-
-        <router-link v-if="authStore.isUdp" to="/gestao-usuarios" class="flex items-center space-x-2 py-2.5 px-4 rounded transition duration-200 hover:bg-paper-active-link hover:text-white">
-          <UserGroupIcon class="h-6 w-6" />
-          <span>Gestão de Usuários</span>
-        </router-link>
-
+                      <router-link v-if="authStore.isManagerOrAdmin" to="/gestao-cursos" class="flex items-center space-x-2 py-2.5 px-4 rounded transition duration-200 hover:bg-paper-active-link hover:text-white">
+                        <ClipboardDocumentListIcon class="h-6 w-6" />
+                        <span>Gestão de Cursos</span>
+                      </router-link>
+              
+                      <router-link v-if="authStore.isManagerOrAdmin" to="/validacao-certificados" class="flex items-center space-x-2 py-2.5 px-4 rounded transition duration-200 hover:bg-paper-active-link hover:text-white">
+                        <ShieldCheckIcon class="h-6 w-6" />
+                        <span>Validar Certificados</span>
+                      </router-link>
+        
+                      <router-link v-if="authStore.isUdp" to="/gestao-usuarios" class="flex items-center space-x-2 py-2.5 px-4 rounded transition duration-200 hover:bg-paper-active-link hover:text-white">
+                        <UserGroupIcon class="h-6 w-6" />
+                        <span>Gestão de Usuários</span>
+                      </router-link>
         <!-- Novos links para Relatórios -->
         <div class="px-4 my-6">
           <div class="border-t border-white border-opacity-20"></div>
@@ -91,15 +95,15 @@ import {
   CubeTransparentIcon,
   Bars3Icon,
   ArrowRightOnRectangleIcon,
-  AcademicCapIcon,
-  ClipboardDocumentListIcon,
-  UserGroupIcon,
-  ChartBarIcon,
-} from '@heroicons/vue/24/outline';
-import ProfileDropdown from '../components/ProfileDropdown.vue';
-import Button from '../components/Button.vue';
-import { useAuthStore } from '../stores/auth';
-
+          AcademicCapIcon,
+          ClipboardDocumentListIcon,
+          UserGroupIcon,
+          ChartBarIcon,
+          ShieldCheckIcon,
+        } from '@heroicons/vue/24/outline';
+        import ProfileDropdown from '../components/ProfileDropdown.vue';
+        import Button from '../components/Button.vue';
+        import { useAuthStore } from '../stores/auth';
 const sidebarOpen = ref(false);
 const route = useRoute();
 const router = useRouter();

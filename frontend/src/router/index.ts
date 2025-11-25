@@ -5,8 +5,9 @@ import Login from '../views/Login.vue';
 import MeusCursos from '../views/MeusCursos.vue';
 import GestaoCursos from '../views/GestaoCursos.vue';
 import GestaoUsuarios from '../views/GestaoUsuarios.vue';
-import RelatoriosUdp from '../views/RelatoriosUdp.vue'; // Importar novo componente
-import RelatoriosChefia from '../views/RelatoriosChefia.vue'; // Importar novo componente
+import RelatoriosUdp from '../views/RelatoriosUdp.vue';
+import RelatoriosChefia from '../views/RelatoriosChefia.vue';
+import ValidacaoCertificados from '../views/ValidacaoCertificados.vue';
 
 const routes = [
   {
@@ -31,25 +32,31 @@ const routes = [
     path: '/gestao-cursos',
     name: 'Gestão de Cursos',
     component: GestaoCursos,
-    meta: { requiresAuth: true },
+    meta: { requiresAuth: true, requiresProfile: ['Chefia', 'UDP'] },
   },
   {
     path: '/gestao-usuarios',
     name: 'Gestão de Usuários',
     component: GestaoUsuarios,
-    meta: { requiresAuth: true },
+    meta: { requiresAuth: true, requiresProfile: 'UDP' },
   },
   {
     path: '/relatorios/udp',
     name: 'Relatórios UDP',
     component: RelatoriosUdp,
-    meta: { requiresAuth: true, requiresProfile: 'UDP' }, // Requer perfil UDP
+    meta: { requiresAuth: true, requiresProfile: 'UDP' },
   },
   {
     path: '/relatorios/chefia',
     name: 'Relatórios Chefia',
     component: RelatoriosChefia,
-    meta: { requiresAuth: true, requiresProfile: 'Chefia' }, // Requer perfil Chefia
+    meta: { requiresAuth: true, requiresProfile: ['Chefia', 'UDP'] },
+  },
+  {
+    path: '/validacao-certificados',
+    name: 'Validação de Certificados',
+    component: ValidacaoCertificados,
+    meta: { requiresAuth: true, requiresProfile: ['Chefia', 'UDP'] },
   },
 ];
 
@@ -63,24 +70,24 @@ const router = createRouter({
 router.beforeEach((to: RouteLocationNormalized, _from: RouteLocationNormalized, next: NavigationGuardNext) => {
   const authStore = useAuthStore();
 
-  // Se o usuário está autenticado e tenta acessar a página de login, redireciona para 'Meus Cursos'
   if (to.name === 'Login' && authStore.isAuthenticated) {
-    next({ name: 'Meus Cursos' });
-    return;
+    return next({ name: 'Meus Cursos' });
   }
 
-  // Se a rota requer autenticação e o usuário não está autenticado, redireciona para 'Login'
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    next({ name: 'Login' });
-    return;
+    return next({ name: 'Login' });
   }
 
-  // Se a rota requer um perfil específico e o usuário não tem esse perfil, redireciona para 'Home'
   if (to.meta.requiresProfile && authStore.isAuthenticated) {
-    const requiredProfile = to.meta.requiresProfile as string;
-    if (authStore.user?.profile !== requiredProfile) {
-      next({ name: 'Home' }); // Redireciona para Home se o perfil não corresponder
-      return;
+    const requiredProfiles = Array.isArray(to.meta.requiresProfile)
+      ? to.meta.requiresProfile
+      : [to.meta.requiresProfile];
+    
+    const userProfile = authStore.user?.perfil;
+
+    if (!userProfile || !requiredProfiles.includes(userProfile)) {
+      console.warn(`Acesso negado à rota ${to.path}. Perfil necessário: ${requiredProfiles.join(' ou ')}. Perfil do usuário: ${userProfile}`);
+      return next({ name: 'Home' });
     }
   }
 
