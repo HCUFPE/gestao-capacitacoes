@@ -6,6 +6,8 @@ from ..controllers import relatorio_controller
 from ..auth.auth import auth_handler
 from ..resources.database import get_app_db_session
 from ..auth.dependencies import is_udp, is_chefia, get_current_user
+from ..providers.implementations.relatorio_provider import RelatorioProvider
+from ..providers.interfaces.relatorio_provider_interface import RelatorioProviderInterface
 
 # --- Router Definition ---
 
@@ -14,6 +16,16 @@ router = APIRouter(
     tags=["Relatórios"],
     dependencies=[Depends(auth_handler.decode_token)]
 )
+
+@router.get("/capacitacoes", response_model=List[Dict[str, Any]], dependencies=[Depends(is_udp)])
+async def get_relatorio_capacitacoes(
+    provider: RelatorioProviderInterface = Depends(RelatorioProvider) # Injeta a implementação do provider
+):
+    """
+    Relatório completo de capacitações EAD.
+    Requer perfil UDP.
+    """
+    return await relatorio_controller.gerar_relatorio_capacitacoes(provider)
 
 @router.get("/udp/cursos-populares", response_model=List[Dict[str, Any]], dependencies=[Depends(is_udp)])
 async def get_cursos_mais_inscritos_udp(

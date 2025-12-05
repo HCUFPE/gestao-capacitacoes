@@ -3,6 +3,14 @@ from sqlalchemy import select, func, desc
 from typing import List, Dict, Any
 
 from ..models import Curso, Inscricao, Atribuicao, Usuario, StatusAtribuicao
+from ..providers.implementations.relatorio_provider import RelatorioProvider
+from ..providers.interfaces.relatorio_provider_interface import RelatorioProviderInterface
+
+async def gerar_relatorio_capacitacoes(provider: RelatorioProviderInterface) -> List[Dict[str, Any]]:
+    """
+    Gera o relatório completo de capacitações EAD, consolidando dados de usuários, cursos e certificados.
+    """
+    return await provider.listar_dados_capacitacoes()
 
 async def listar_cursos_mais_inscritos_udp(db: AsyncSession, limit: int = 10) -> List[Dict[str, Any]]:
     """

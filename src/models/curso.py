@@ -8,6 +8,7 @@ class Curso(Base):
     certificadora = Column(String)
     carga_horaria = Column(Integer)
     link = Column(String)
+    tema = Column(String, nullable=True, doc="Tema ou categoria do curso") # NOVO: Campo para Tema do curso
     ano_gd = Column(String) # Changed from Enum to String
     lotacao_id = Column(String) # ID da lotação/setor no AD
     atribuir_a_todos = Column(saBoolean, default=False)
