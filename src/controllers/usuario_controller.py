@@ -39,17 +39,27 @@ async def sincronizar_usuario(db: AsyncSession, user_info: dict) -> Usuario:
 
     if db_user:
         # Usuário existe, atualiza os dados
+        updated_values = {
+            "nome": display_name,
+            "email": email,
+            "lotacao": department,
+            "nome_chefia": manager_name,
+            "cargo": title,
+            "matricula": employee_number
+        }
+        
+        # Atualiza o perfil APENAS se o perfil no AD for diferente e o perfil atual for o padrão TRABALHADOR
+        # Ou se o perfil do AD é UDP/Chefia e o do BD não é (para garantir a elevação)
+        ad_profile = PerfilUsuario(user_info.get("perfil", "Trabalhador"))
+        if db_user.perfil == PerfilUsuario.TRABALHADOR and ad_profile != PerfilUsuario.TRABALHADOR:
+            updated_values["perfil"] = ad_profile
+        elif ad_profile in [PerfilUsuario.UDP, PerfilUsuario.CHEFIA] and db_user.perfil != ad_profile:
+            updated_values["perfil"] = ad_profile
+
         stmt_update = (
             update(Usuario)
             .where(Usuario.id == user_id)
-            .values(
-                nome=display_name,
-                email=email,
-                lotacao=department,
-                nome_chefia=manager_name,
-                cargo=title,
-                matricula=employee_number
-            )
+            .values(**updated_values)
         )
         await db.execute(stmt_update)
         await db.commit()
@@ -65,7 +75,7 @@ async def sincronizar_usuario(db: AsyncSession, user_info: dict) -> Usuario:
             nome_chefia=manager_name,
             cargo=title,
             matricula=employee_number,
-            perfil=PerfilUsuario.TRABALHADOR # Perfil padrão
+            perfil=PerfilUsuario(user_info.get("perfil", "Trabalhador")) # Usa o perfil determinado pelo AD ou padrão
         )
         db.add(new_user)
         await db.commit()

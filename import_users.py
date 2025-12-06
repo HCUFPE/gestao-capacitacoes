@@ -92,6 +92,12 @@ async def import_users():
             # Normalização de chaves (id, nome, email, cpf, vinculo)
             # Tenta chaves comuns de retorno SQL ou CSV
             user_id = row.get('id') or row.get('sAMAccountName')
+            
+            # DEBUG SPECIFIC USER
+            if user_id and 'filipe.cavalcanti' in str(user_id).lower():
+                print(f"DEBUG: Found user in SQL result: {user_id}")
+                print(f"DEBUG: Row data: {row}")
+            
             if not user_id:
                 continue
 

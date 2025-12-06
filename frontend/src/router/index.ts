@@ -7,6 +7,7 @@ import GestaoCursos from '../views/GestaoCursos.vue';
 import GestaoUsuarios from '../views/GestaoUsuarios.vue';
 import RelatoriosUdp from '../views/RelatoriosUdp.vue';
 import RelatoriosChefia from '../views/RelatoriosChefia.vue';
+import RelatoriosCapacitacoes from '../views/RelatoriosCapacitacoes.vue';
 import ValidacaoCertificados from '../views/ValidacaoCertificados.vue';
 
 const routes = [
@@ -44,6 +45,12 @@ const routes = [
     path: '/relatorios/udp',
     name: 'Relatórios UDP',
     component: RelatoriosUdp,
+    meta: { requiresAuth: true, requiresProfile: 'UDP' },
+  },
+  {
+    path: '/relatorios/capacitacoes',
+    name: 'Relatórios Capacitações',
+    component: RelatoriosCapacitacoes,
     meta: { requiresAuth: true, requiresProfile: 'UDP' },
   },
   {

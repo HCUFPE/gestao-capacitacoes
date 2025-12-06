@@ -15,3 +15,17 @@ class RelatorioProviderInterface(ABC):
         para o relatório de capacitações, incluindo informações de usuário, curso e certificado.
         """
         pass
+
+    @abstractmethod
+    async def get_status_lotacao(self, lotacao: str) -> List[Dict[str, Any]]:
+        """
+        Retorna o status consolidado das atribuições para uma lotação específica (KPIs).
+        """
+        pass
+
+    @abstractmethod
+    async def get_progresso_equipe(self, lotacao: str) -> List[Dict[str, Any]]:
+        """
+        Retorna o progresso individual detalhado dos membros da equipe da lotação.
+        """
+        pass

@@ -135,7 +135,7 @@ async def listar_atribuicoes_pendentes_validacao(db: AsyncSession, lotacao: str)
         )
         .options(
             selectinload(Atribuicao.curso),
-            selectinload(Atribuicao.usuario)
+            selectinload(Atribuicao.user)
         )
         .order_by(Atribuicao.data_conclusao.asc())
     )
@@ -148,7 +148,7 @@ async def listar_atribuicoes_pendentes_validacao(db: AsyncSession, lotacao: str)
         response.append({
             "atribuicao_id": atribuicao.id,
             "data_submissao": atribuicao.data_conclusao,
-            "usuario_nome": atribuicao.usuario.nome,
+            "usuario_nome": atribuicao.user.nome,
             "curso_titulo": atribuicao.curso.titulo,
             "certificado_id": atribuicao.certificado_id,
         })

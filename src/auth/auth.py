@@ -38,12 +38,14 @@ class MockAuthProvider(AuthProviderInterface):
     """Provedor de autenticação mock para desenvolvimento offline."""
     def authenticate_user(self, username, password) -> dict:
         print("--- Using Mock Authentication ---")
+        print(f"DEBUG: MockAuthProvider received username: {username}, password: {password}")
         if username == "admin" and password == "admin":
             print(f"Authentication successful for mock user: {username}")
             # O nome do grupo que o frontend usa para identificar administradores
             admin_group = "GLO-SEC-HCPE-SETISD"
             return {
                 "username": "admin",
+                "sAMAccountName": ["admin"], # Necessário para usuario_controller
                 "displayName": ["Mock Admin"],
                 "groups": [admin_group, "Users"],
                 "email": "admin@mock.com"
@@ -54,6 +56,21 @@ class MockAuthProvider(AuthProviderInterface):
                 status_code=status.HTTP_401_UNAUTHORIZED, 
                 detail="Invalid mock credentials"
             )
+
+    def get_user_ad_info(self, username: str) -> dict:
+        print(f"--- Getting Mock AD Info for user: {username} ---")
+        # Simulate generic user info
+        admin_group = "GLO-SEC-HCPE-SETISD"
+        return {
+            "username": username,
+            "sAMAccountName": [username], # Necessário
+            "displayName": [f"Mock {username.capitalize()}"],
+            "groups": [admin_group, "Users"] if username == "admin" else ["Users"],
+            "email": [f"{username}@mock.com"],
+            "department": ["MOCK DEPT"],
+            "title": ["Mock Title"],
+            "employeeNumber": ["00000"]
+        }
 
 class ActiveDirectoryAuthProvider(AuthProviderInterface):
     """Provedor de autenticação real usando LDAP/Active Directory."""

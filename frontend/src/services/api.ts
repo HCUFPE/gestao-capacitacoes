@@ -49,7 +49,8 @@ api.interceptors.response.use(
     // uiStore.setLoading(false);
 
     // Check if the error is 401 and it's not a retry request
-    if (error.response.status === 401 && !originalRequest._retry) {
+    // Also ensure we are not trying to refresh the refresh endpoint itself
+    if (error.response.status === 401 && !originalRequest._retry && !originalRequest.url?.includes('/token/refresh')) {
       if (isRefreshing) {
         return new Promise(function(resolve, reject) {
           failedQueue.push({ resolve, reject });
@@ -81,6 +82,8 @@ api.interceptors.response.use(
         processQueue(refreshError, null);
         console.error('Unable to refresh token. Logging out.', refreshError);
         authStore.logout(); // If refresh fails, logout the user
+        // Force redirect to login to ensure clean state
+        window.location.href = '/login';
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

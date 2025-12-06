@@ -1,4 +1,5 @@
 
+import os
 from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, Response, Request, status, Form
 from fastapi.security import OAuth2PasswordRequestForm
@@ -10,6 +11,8 @@ from ..controllers import usuario_controller # Import the new controller
 from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/api", tags=["Authentication"])
+
+IS_PRODUCTION = os.getenv("ENV") == "production"
 
 @router.post("/login")
 async def login(
@@ -50,7 +53,7 @@ async def login(
             value=refresh_token,
             httponly=True,
             samesite="lax",
-            secure=True, # Should be True in production with HTTPS
+            secure=IS_PRODUCTION, # Dynamic secure flag
             max_age=REFRESH_TOKEN_EXP_DAYS * 24 * 60 * 60 # Convert days to seconds
         )
 
@@ -110,7 +113,7 @@ async def refresh_token(request: Request, response: Response, db: AsyncSession =
         value=new_refresh_token,
         httponly=True,
         samesite="lax",
-        secure=True, # Should be True in production with HTTPS
+        secure=IS_PRODUCTION, # Dynamic secure flag
         max_age=REFRESH_TOKEN_EXP_DAYS * 24 * 60 * 60
     )
 
@@ -125,7 +128,7 @@ async def logout(response: Response, request: Request, db: AsyncSession = Depend
     if refresh_token:
         await auth_handler.invalidate_refresh_token(refresh_token, db)
     
-    response.delete_cookie(key="refresh_token", httponly=True, samesite="lax", secure=True)
+    response.delete_cookie(key="refresh_token", httponly=True, samesite="lax", secure=IS_PRODUCTION)
     return {"message": "Logged out successfully"}
 
 @router.get("/users/me")

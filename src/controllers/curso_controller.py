@@ -28,9 +28,19 @@ async def criar_curso(db: AsyncSession, curso_data: CursoCreate) -> Curso:
         certificadora=curso_data.certificadora,
         carga_horaria=curso_data.carga_horaria,
         link=curso_data.link,
+        tema=curso_data.tema,
         ano_gd=curso_data.ano_gd,
         lotacao_id=curso_data.lotacao_id,
-        atribuir_a_todos=curso_data.atribuir_a_todos
+        atribuir_a_todos=curso_data.atribuir_a_todos,
+        conteudista=curso_data.conteudista,
+        disponibilidade_dias=curso_data.disponibilidade_dias,
+        tipo_oferta=curso_data.tipo_oferta,
+        apresentacao=curso_data.apresentacao,
+        publico_alvo=curso_data.publico_alvo,
+        conteudo_programatico=curso_data.conteudo_programatico,
+        data_lancamento=curso_data.data_lancamento,
+        acessibilidade=curso_data.acessibilidade,
+        observacao=curso_data.observacao
     )
     db.add(new_curso)
     

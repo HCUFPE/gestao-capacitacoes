@@ -1,13 +1,18 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Dict, Any
 
-from ..controllers import relatorio_controller
+from ..controllers import relatorio_controller, usuario_controller
 from ..auth.auth import auth_handler
 from ..resources.database import get_app_db_session
 from ..auth.dependencies import is_udp, is_chefia, get_current_user
 from ..providers.implementations.relatorio_provider import RelatorioProvider
 from ..providers.interfaces.relatorio_provider_interface import RelatorioProviderInterface
+
+# --- Dependency Factory ---
+def get_relatorio_provider(db: AsyncSession = Depends(get_app_db_session)) -> RelatorioProviderInterface:
+    return RelatorioProvider(db)
 
 # --- Router Definition ---
 
@@ -19,13 +24,39 @@ router = APIRouter(
 
 @router.get("/capacitacoes", response_model=List[Dict[str, Any]], dependencies=[Depends(is_udp)])
 async def get_relatorio_capacitacoes(
-    provider: RelatorioProviderInterface = Depends(RelatorioProvider) # Injeta a implementação do provider
+    provider: RelatorioProviderInterface = Depends(get_relatorio_provider)
 ):
     """
     Relatório completo de capacitações EAD.
     Requer perfil UDP.
     """
     return await relatorio_controller.gerar_relatorio_capacitacoes(provider)
+
+@router.get("/capacitacoes/export/excel", dependencies=[Depends(is_udp)])
+async def export_relatorio_excel(
+    provider: RelatorioProviderInterface = Depends(get_relatorio_provider)
+):
+    """
+    Exporta o relatório de capacitações para Excel.
+    """
+    file_stream = await relatorio_controller.exportar_relatorio_excel(provider)
+    headers = {
+        'Content-Disposition': 'attachment; filename="relatorio_capacitacoes.xlsx"'
+    }
+    return StreamingResponse(file_stream, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', headers=headers)
+
+@router.get("/capacitacoes/export/pdf", dependencies=[Depends(is_udp)])
+async def export_relatorio_pdf(
+    provider: RelatorioProviderInterface = Depends(get_relatorio_provider)
+):
+    """
+    Exporta o relatório de capacitações para PDF.
+    """
+    file_stream = await relatorio_controller.exportar_relatorio_pdf(provider)
+    headers = {
+        'Content-Disposition': 'attachment; filename="relatorio_capacitacoes.pdf"'
+    }
+    return StreamingResponse(file_stream, media_type='application/pdf', headers=headers)
 
 @router.get("/udp/cursos-populares", response_model=List[Dict[str, Any]], dependencies=[Depends(is_udp)])
 async def get_cursos_mais_inscritos_udp(
@@ -82,30 +113,38 @@ async def get_usuarios_perfil_lotacao_udp(
 @router.get("/chefia/status-lotacao", response_model=List[Dict[str, Any]], dependencies=[Depends(is_chefia)])
 async def get_status_lotacao_chefia(
     current_user: dict = Depends(get_current_user),
+    provider: RelatorioProviderInterface = Depends(get_relatorio_provider),
     db: AsyncSession = Depends(get_app_db_session)
 ):
     """
     Relatório para a Chefia: Status de cursos da minha lotação.
     Requer perfil Chefia.
     """
-    lotacao = current_user.get("lotacao")
-    if not lotacao:
+    user_id = current_user.get("sub")
+    user = await usuario_controller.get_user_by_username(db, user_id)
+    
+    if not user or not user.lotacao:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Lotação do usuário não encontrada.")
-    return await relatorio_controller.get_relatorio_status_lotacao_chefia(db, lotacao)
+        
+    return await relatorio_controller.get_relatorio_status_lotacao_chefia(provider, user.lotacao)
 
 @router.get("/chefia/progresso-individual", response_model=List[Dict[str, Any]], dependencies=[Depends(is_chefia)])
 async def get_progresso_individual_chefia(
     current_user: dict = Depends(get_current_user),
+    provider: RelatorioProviderInterface = Depends(get_relatorio_provider),
     db: AsyncSession = Depends(get_app_db_session)
 ):
     """
     Relatório para a Chefia: Progresso individual de subordinados.
     Requer perfil Chefia.
     """
-    lotacao = current_user.get("lotacao")
-    if not lotacao:
+    user_id = current_user.get("sub")
+    user = await usuario_controller.get_user_by_username(db, user_id)
+    
+    if not user or not user.lotacao:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Lotação do usuário não encontrada.")
-    return await relatorio_controller.get_relatorio_progresso_individual_chefia(db, lotacao)
+        
+    return await relatorio_controller.get_relatorio_progresso_individual_chefia(provider, user.lotacao)
 
 @router.get("/chefia/certificados-pendentes", response_model=List[Dict[str, Any]], dependencies=[Depends(is_chefia)])
 async def get_certificados_pendentes_chefia(

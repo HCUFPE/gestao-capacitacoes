@@ -53,7 +53,7 @@
           <span>Relatórios UDP</span>
         </router-link>
 
-        <router-link v-if="authStore.isManagerOrAdmin" to="/relatorios/chefia" class="flex items-center space-x-2 py-2.5 px-4 rounded transition duration-200 hover:bg-paper-active-link hover:text-white">
+        <router-link v-if="authStore.isManagerOrAdmin && authStore.user?.department?.length" to="/relatorios/chefia" class="flex items-center space-x-2 py-2.5 px-4 rounded transition duration-200 hover:bg-paper-active-link hover:text-white">
           <ChartBarIcon class="h-6 w-6" />
           <span>Relatórios Chefia</span>
         </router-link>

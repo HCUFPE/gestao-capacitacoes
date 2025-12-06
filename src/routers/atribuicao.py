@@ -1,10 +1,10 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 from pydantic import BaseModel
 from datetime import datetime
 
-from ..controllers import atribuicao_controller
+from ..controllers import atribuicao_controller, usuario_controller
 from ..auth.auth import auth_handler
 from ..auth.dependencies import get_current_user, is_chefia
 from ..resources.database import get_app_db_session
@@ -64,7 +64,10 @@ async def get_atribuicoes_pendentes_validacao(
     """
     (Chefia) Lista as atribuições com certificados submetidos que aguardam validação.
     """
-    lotacao = current_user.get("lotacao")
-    if not lotacao:
+    user_id = current_user.get("sub")
+    user = await usuario_controller.get_user_by_username(db, user_id)
+    
+    if not user or not user.lotacao:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Lotação do usuário não encontrada.")
-    return await atribuicao_controller.listar_atribuicoes_pendentes_validacao(db, lotacao)
+        
+    return await atribuicao_controller.listar_atribuicoes_pendentes_validacao(db, user.lotacao)

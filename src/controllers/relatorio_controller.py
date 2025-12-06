@@ -1,16 +1,32 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc
 from typing import List, Dict, Any
+from io import BytesIO
 
 from ..models import Curso, Inscricao, Atribuicao, Usuario, StatusAtribuicao
 from ..providers.implementations.relatorio_provider import RelatorioProvider
 from ..providers.interfaces.relatorio_provider_interface import RelatorioProviderInterface
+from ..helpers import excel_helper, pdf_helper
 
 async def gerar_relatorio_capacitacoes(provider: RelatorioProviderInterface) -> List[Dict[str, Any]]:
     """
     Gera o relatório completo de capacitações EAD, consolidando dados de usuários, cursos e certificados.
     """
     return await provider.listar_dados_capacitacoes()
+
+async def exportar_relatorio_excel(provider: RelatorioProviderInterface) -> BytesIO:
+    """
+    Gera o arquivo Excel do relatório de capacitações.
+    """
+    data = await provider.listar_dados_capacitacoes()
+    return await excel_helper.export_to_excel(data)
+
+async def exportar_relatorio_pdf(provider: RelatorioProviderInterface) -> BytesIO:
+    """
+    Gera o arquivo PDF do relatório de capacitações.
+    """
+    data = await provider.listar_dados_capacitacoes()
+    return await pdf_helper.export_to_pdf(data, filename="relatorio_capacitacoes.pdf")
 
 async def listar_cursos_mais_inscritos_udp(db: AsyncSession, limit: int = 10) -> List[Dict[str, Any]]:
     """
@@ -112,17 +128,17 @@ async def get_relatorio_usuarios_por_perfil_lotacao_udp(db: AsyncSession) -> Lis
     """
     return []
 
-async def get_relatorio_status_lotacao_chefia(db: AsyncSession, lotacao: str) -> List[Dict[str, Any]]:
+async def get_relatorio_status_lotacao_chefia(provider: RelatorioProviderInterface, lotacao: str) -> List[Dict[str, Any]]:
     """
-    Placeholder para o relatório de status de cursos da minha lotação para a Chefia.
+    Relatório para a Chefia: Status de cursos da minha lotação.
     """
-    return []
+    return await provider.get_status_lotacao(lotacao)
 
-async def get_relatorio_progresso_individual_chefia(db: AsyncSession, lotacao: str) -> List[Dict[str, Any]]:
+async def get_relatorio_progresso_individual_chefia(provider: RelatorioProviderInterface, lotacao: str) -> List[Dict[str, Any]]:
     """
-    Placeholder para o relatório de progresso individual de subordinados para a Chefia.
+    Relatório para a Chefia: Progresso individual de subordinados.
     """
-    return []
+    return await provider.get_progresso_equipe(lotacao)
 
 async def get_relatorio_certificados_pendentes_chefia(db: AsyncSession, lotacao: str) -> List[Dict[str, Any]]:
     """

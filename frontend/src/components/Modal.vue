@@ -8,7 +8,7 @@
     </transition>
     <transition name="slide-up">
       <div v-if="show" class="fixed bottom-0 inset-x-0 sm:inset-0 sm:flex sm:items-center sm:justify-center z-50">
-        <div class="bg-white rounded-t-lg sm:rounded-lg shadow-xl w-full max-w-lg m-4">
+        <div :class="['bg-white rounded-t-lg sm:rounded-lg shadow-xl w-full m-4', maxWidthClass]">
           <div class="p-4 border-b flex justify-between items-center">
             <h2 class="text-xl font-semibold">
               <slot name="header">Modal Title</slot>
@@ -19,7 +19,7 @@
               </svg>
             </button>
           </div>
-          <div class="p-4">
+          <div class="p-4 overflow-y-auto max-h-[80vh]">
             <slot></slot>
           </div>
           <div v-if="$slots.footer" class="p-4 border-t flex justify-end space-x-4">
@@ -32,13 +32,34 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted } from 'vue';
+import { onMounted, onUnmounted, computed } from 'vue';
 
 const props = defineProps({
   show: {
     type: Boolean,
     default: false,
   },
+  size: {
+    type: String,
+    default: 'lg', // sm, md, lg, xl, 2xl, 3xl, 4xl, 5xl, 6xl, 7xl, full
+  }
+});
+
+const maxWidthClass = computed(() => {
+  switch (props.size) {
+    case 'sm': return 'max-w-sm';
+    case 'md': return 'max-w-md';
+    case 'lg': return 'max-w-lg';
+    case 'xl': return 'max-w-xl';
+    case '2xl': return 'max-w-2xl';
+    case '3xl': return 'max-w-3xl';
+    case '4xl': return 'max-w-4xl';
+    case '5xl': return 'max-w-5xl';
+    case '6xl': return 'max-w-6xl';
+    case '7xl': return 'max-w-7xl';
+    case 'full': return 'max-w-full';
+    default: return 'max-w-lg';
+  }
 });
 
 const emit = defineEmits(['close']);
