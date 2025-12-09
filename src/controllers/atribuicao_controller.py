@@ -82,7 +82,7 @@ async def listar_atribuicoes_por_usuario(db: AsyncSession, user_id: str) -> List
     stmt = (
         select(Atribuicao)
         .where(Atribuicao.user_id == user_id)
-        .options(selectinload(Atribuicao.curso)) # Eager load para incluir detalhes do curso
+        .options(selectinload(Atribuicao.curso), selectinload(Atribuicao.certificado)) # Eager load para incluir detalhes do curso e certificado
     )
     result = await db.execute(stmt)
     atribuicoes = result.scalars().all()
@@ -117,7 +117,7 @@ async def obter_atribuicao_por_id(db: AsyncSession, atribuicao_id: str) -> Atrib
     result = await db.execute(
         select(Atribuicao)
         .where(Atribuicao.id == atribuicao_id)
-        .options(selectinload(Atribuicao.curso))
+        .options(selectinload(Atribuicao.curso), selectinload(Atribuicao.certificado))
     )
     return result.scalars().first()
 

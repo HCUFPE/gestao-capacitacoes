@@ -168,7 +168,7 @@
                 id="atribuir_a_todos"
                 class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
                 :checked="myForm?.values.atribuir_a_todos"
-                @change="myForm?.setFieldValue('atribuir_a_todos', $event.target.checked)"
+                @change="event => { if (myForm) myForm.setFieldValue('atribuir_a_todos', (event.target as HTMLInputElement).checked) }"
               />
               <label for="atribuir_a_todos" class="ml-2 block text-sm text-gray-900">
                 Atribuir este curso a todos os funcionários deste setor
@@ -217,7 +217,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, nextTick } from 'vue';
-import { Form, Field, ErrorMessage, useForm } from 'vee-validate'; // Removed useField as it's not directly used
+import { Form, Field, ErrorMessage } from 'vee-validate';
 import { toTypedSchema } from '@vee-validate/zod';
 import * as z from 'zod';
 import { useToast } from 'vue-toastification';
