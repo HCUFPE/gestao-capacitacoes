@@ -47,7 +47,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { ref, watch, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { UserCircleIcon, ArrowLeftOnRectangleIcon, BriefcaseIcon, BuildingOffice2Icon, IdentificationIcon } from '@heroicons/vue/24/outline';
 import { useAuthStore } from '../stores/auth';
@@ -63,5 +63,8 @@ const handleLogout = async () => {
 // Close dropdown on navigation
 watch(() => route.path, () => {
   isOpen.value = false;
+});
+onMounted(() => {
+  console.log(authStore.user);
 });
 </script>
