@@ -1,4 +1,3 @@
 #!/bin/bash
-killall uvicorn
 source .venv/bin/activate
-uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload --log-level debug 2> server.log &
+uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload --log-level debug 2> server.log
