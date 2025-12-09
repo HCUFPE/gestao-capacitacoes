@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from typing import List
 
 # --- Pydantic Schemas for Cursos ---
 
@@ -30,3 +31,7 @@ class CursoResponse(CursoBase):
 
     class Config:
         from_attributes = True
+
+class PaginatedCursoResponse(BaseModel):
+    items: List[CursoResponse]
+    total: int

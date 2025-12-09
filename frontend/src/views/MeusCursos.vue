@@ -84,37 +84,25 @@
         </div>
       </section>
 
-      <!-- Cursos Genéricos -->
-      <section v-if="genericCourses.length > 0">
-        <h2 class="text-xl font-bold mb-4 flex items-center space-x-2">
-          <AcademicCapIcon class="h-6 w-6 text-gray-500" />
-          <span>Cursos de Interesse Geral</span>
-        </h2>
-        <div class="space-y-2">
-          <div v-for="curso in genericCourses" :key="curso.id" class="flex items-center justify-between p-3 border border-gray-200 rounded-lg bg-gray-50">
-            <div class="flex items-center space-x-3">
-              <AcademicCapIcon class="h-8 w-8 text-gray-400 flex-shrink-0" />
-              <div>
-                <span class="text-lg leading-tight font-medium text-black">{{ curso.titulo }}</span>
-                <div class="text-sm text-gray-500">
-                  <span class="uppercase tracking-wide text-gray-400 font-semibold mr-2">{{ curso.ano_gd }}</span>
-                  <span>Carga Horária: {{ curso.carga_horaria }}h</span>
-                </div>
-              </div>
-            </div>
-            <div class="flex space-x-2">
-              <Button @click="handleEnroll(curso.id)" variant="success" type="button" size="sm">
-                <template #icon><CheckCircleIcon class="h-4 w-4" /></template>
-                Inscrever-se
-              </Button>
-            </div>
-          </div>
-        </div>
-      </section>
+      <!-- Botão para abrir o Catálogo de Cursos -->
+      <div class="flex justify-center pt-4 border-t border-gray-200">
+        <Button @click="isCatalogModalOpen = true" variant="secondary">
+          <template #icon>
+            <PlusCircleIcon class="h-5 w-5" />
+          </template>
+          Inscrever-se em Outros Cursos
+        </Button>
+      </div>
     </div>
 
     <CertificateUploadModal :show="isUploadModalOpen" :atribuicao-id="selectedAtribuicaoId" @close="isUploadModalOpen = false" @upload-success="onUploadSuccess" />
     <CourseDetailsModal :show="isDetailsModalOpen" :curso="selectedCourseForDetails" @close="isDetailsModalOpen = false" @send-certificate="handleSendCertificate" />
+    <CourseCatalogModal 
+      :show="isCatalogModalOpen" 
+      :courses="genericCourses" 
+      @close="isCatalogModalOpen = false" 
+      @enroll="handleCatalogEnroll" 
+    />
   </Card>
 </template>
 
@@ -125,17 +113,21 @@ import Card from '../components/Card.vue';
 import Button from '../components/Button.vue';
 import CourseCard from '../components/CourseCard.vue';
 import CertificateUploadModal from '../components/CertificateUploadModal.vue';
-import CourseDetailsModal from '../components/CourseDetailsModal.vue'; // Import new modal
-import { IdentificationIcon, CheckCircleIcon, XCircleIcon, AcademicCapIcon, ArrowUpTrayIcon, InformationCircleIcon } from '@heroicons/vue/24/outline';
+import CourseDetailsModal from '../components/CourseDetailsModal.vue';
+import CourseCatalogModal from '../components/CourseCatalogModal.vue'; // Import do novo modal
+import { IdentificationIcon, CheckCircleIcon, XCircleIcon, AcademicCapIcon, ArrowUpTrayIcon, InformationCircleIcon, PlusCircleIcon } from '@heroicons/vue/24/outline';
 import { useToast } from 'vue-toastification';
 
 const assignedCourses = ref<any[]>([]);
 const enrolledCourses = ref<any[]>([]);
 const recommendedCourses = ref<any[]>([]);
-const genericCourses = ref<any[]>([]); // New ref for generic courses
+const genericCourses = ref<any[]>([]);
 const loading = ref(true);
 const error = ref<Error | null>(null);
 const toast = useToast();
+
+// State for Catalog Modal
+const isCatalogModalOpen = ref(false);
 
 // State for Upload Modal
 const isUploadModalOpen = ref(false);
@@ -233,6 +225,10 @@ const handleUnenroll = async (inscricaoId: string) => {
   } catch (err: any) {
     toast.error(`Erro ao desinscrever-se: ${err.response?.data?.detail || err.message}`);
   }
+};
+
+const handleCatalogEnroll = (cursoId: string) => {
+  handleEnroll(cursoId);
 };
 
 const handleSendCertificate = (atribuicaoId: string) => {

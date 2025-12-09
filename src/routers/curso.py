@@ -5,7 +5,7 @@ from typing import List
 from ..controllers import curso_controller
 from ..auth.auth import auth_handler
 from ..resources.database import get_app_db_session
-from ..schemas.curso_schema import CursoCreate, CursoResponse
+from ..schemas.curso_schema import CursoCreate, CursoResponse, PaginatedCursoResponse
 from ..models import Curso
 from ..auth.dependencies import is_chefia, get_current_user
 
@@ -16,13 +16,17 @@ router = APIRouter(
     tags=["Cursos"],
 )
 
-@router.get("", response_model=List[CursoResponse], dependencies=[Depends(auth_handler.decode_token)])
-@router.get("/", response_model=List[CursoResponse], dependencies=[Depends(auth_handler.decode_token)])
+@router.get("", response_model=PaginatedCursoResponse, dependencies=[Depends(auth_handler.decode_token)])
+@router.get("/", response_model=PaginatedCursoResponse, dependencies=[Depends(auth_handler.decode_token)])
 async def listar_cursos(
+    skip: int = 0,
+    limit: int = 10,
+    titulo: str | None = None,
+    tema: str | None = None,
     db: AsyncSession = Depends(get_app_db_session)
 ):
-    """Lista todos os cursos da fonte de dados interna."""
-    return await curso_controller.listar_cursos(db)
+    """Lista todos os cursos da fonte de dados interna com paginação e filtros."""
+    return await curso_controller.listar_cursos(db, skip=skip, limit=limit, titulo=titulo, tema=tema)
 
 @router.post("", response_model=CursoResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(auth_handler.decode_token), Depends(is_chefia)])
 @router.post("/", response_model=CursoResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(auth_handler.decode_token), Depends(is_chefia)])

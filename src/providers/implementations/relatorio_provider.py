@@ -1,6 +1,6 @@
 from typing import List, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, case
 from sqlalchemy.orm import selectinload
 
 from ..interfaces.relatorio_provider_interface import RelatorioProviderInterface
@@ -81,7 +81,7 @@ class RelatorioProvider(RelatorioProviderInterface):
                 Usuario.cargo,
                 func.count(Atribuicao.id).label("total_atribuicoes"),
                 func.sum(
-                    func.case(
+                    case(
                         (Atribuicao.status.in_(['REALIZADO', 'Concluído', 'Validado']), 1),
                         else_=0
                     )

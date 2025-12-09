@@ -8,12 +8,30 @@ from ..models import Curso, Atribuicao, Usuario, StatusAtribuicao
 from ..schemas.curso_schema import CursoCreate
 from datetime import datetime
 
-async def listar_cursos(db: AsyncSession) -> List[Curso]:
+from sqlalchemy import func
+
+async def listar_cursos(db: AsyncSession, skip: int = 0, limit: int = 10, titulo: str = None, tema: str = None) -> Dict[str, Any]:
     """
-    Lista todos os cursos usando o ORM do SQLAlchemy.
+    Lista cursos com paginação e filtros.
     """
-    result = await db.execute(select(Curso))
-    return result.scalars().all()
+    stmt = select(Curso)
+    
+    if titulo:
+        stmt = stmt.where(Curso.titulo.ilike(f"%{titulo}%"))
+    if tema:
+        stmt = stmt.where(Curso.tema.ilike(f"%{tema}%"))
+    
+    # Get total count
+    count_stmt = select(func.count()).select_from(stmt.subquery())
+    total = await db.scalar(count_stmt)
+
+    # Apply pagination
+    stmt = stmt.offset(skip).limit(limit)
+    
+    result = await db.execute(stmt)
+    items = result.scalars().all()
+    
+    return {"items": items, "total": total}
 
 async def criar_curso(db: AsyncSession, curso_data: CursoCreate) -> Curso:
     """

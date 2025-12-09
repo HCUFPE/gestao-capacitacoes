@@ -12,6 +12,13 @@
         </Button>
       </div>
 
+      <!-- Filter Bar -->
+      <FilterBar 
+        :filters="filterDefinitions"
+        @apply-filters="applyFilters"
+        @clear-filters="clearFilters"
+      />
+
       <!-- Loading/Error/Empty States -->
       <div v-if="loading" class="text-center py-10">
         <p>Carregando cursos...</p>
@@ -42,6 +49,13 @@
             </div>
           </template>
         </DataTable>
+
+        <!-- Pagination -->
+        <Pagination 
+          v-model:currentPage="page"
+          :total-pages="totalPages"
+          :total-items="total"
+        />
       </div>
     </Card>
 
@@ -221,7 +235,7 @@ import { Form, Field, ErrorMessage } from 'vee-validate';
 import { toTypedSchema } from '@vee-validate/zod';
 import * as z from 'zod';
 import { useToast } from 'vue-toastification';
-import { PlusIcon, AcademicCapIcon, PencilIcon, TrashIcon, LinkIcon, CheckIcon, XMarkIcon } from '@heroicons/vue/24/outline';
+import { PlusIcon, AcademicCapIcon, PencilIcon, TrashIcon, LinkIcon, CheckIcon, XMarkIcon, TagIcon } from '@heroicons/vue/24/outline';
 
 import api from '../services/api';
 import Card from '../components/Card.vue';
@@ -229,6 +243,8 @@ import Button from '../components/Button.vue';
 import Modal from '../components/Modal.vue';
 import DataTable from '../components/DataTable.vue';
 import PageHeader from '../components/PageHeader.vue';
+import Pagination from '../components/Pagination.vue';
+import FilterBar from '../components/FilterBar.vue';
 
 const toast = useToast();
 
@@ -254,6 +270,20 @@ const editingCursoId = ref<string | null>(null);
 const isConfirmModalOpen = ref(false);
 const cursoToDeleteId = ref<string | null>(null);
 const isDeleting = ref(false);
+
+// Pagination and Filter State
+const page = ref(1);
+const limit = ref(10);
+const total = ref(0);
+const activeFilters = ref<Record<string, string>>({});
+
+// Filter definitions for FilterBar
+const filterDefinitions = ref([
+  { key: 'titulo', label: 'Título', placeholder: 'Buscar por título...', icon: AcademicCapIcon },
+  { key: 'tema', label: 'Tema', placeholder: 'Buscar por tema...', icon: TagIcon },
+]);
+
+const totalPages = computed(() => Math.ceil(total.value / limit.value));
 
 const initialFormValues = ref({
   titulo: '',
@@ -326,8 +356,14 @@ const availableYears = computed(() => {
 const fetchCursos = async () => {
   try {
     loading.value = true;
-    const { data } = await api.get('/api/cursos');
-    cursos.value = data;
+    const params = {
+      skip: (page.value - 1) * limit.value,
+      limit: limit.value,
+      ...activeFilters.value
+    };
+    const { data } = await api.get('/api/cursos', { params });
+    cursos.value = data.items;
+    total.value = data.total;
     dataLoaded.value = true;
   } catch (err: any) {
     error.value = err;
@@ -336,6 +372,20 @@ const fetchCursos = async () => {
     loading.value = false;
   }
 };
+
+const applyFilters = (filters: Record<string, string>) => {
+  page.value = 1;
+  activeFilters.value = filters;
+  fetchCursos();
+};
+
+const clearFilters = () => {
+  page.value = 1;
+  activeFilters.value = {};
+  fetchCursos();
+};
+
+watch(page, fetchCursos);
 
 const fetchLotacoes = async () => {
   try {
