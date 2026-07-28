@@ -57,6 +57,16 @@
           <ChartBarIcon class="h-6 w-6" />
           <span>Relatórios Chefia</span>
         </router-link>
+
+        <router-link v-if="authStore.isManagerOrAdmin && authStore.user?.department?.length" to="/relatorios/consolidado/chefia" class="flex items-center space-x-2 py-2.5 px-4 rounded transition duration-200 hover:bg-paper-active-link hover:text-white">
+          <TableCellsIcon class="h-6 w-6" />
+          <span>Relatório Consolidado</span>
+        </router-link>
+
+        <router-link v-if="authStore.isUdp" to="/relatorios/consolidado/udp" class="flex items-center space-x-2 py-2.5 px-4 rounded transition duration-200 hover:bg-paper-active-link hover:text-white">
+          <TableCellsIcon class="h-6 w-6" />
+          <span>Relatório Consolidado</span>
+        </router-link>
       </nav>
     </aside>
 
@@ -100,6 +110,7 @@ import {
           UserGroupIcon,
           ChartBarIcon,
           ShieldCheckIcon,
+          TableCellsIcon,
         } from '@heroicons/vue/24/outline';
         import ProfileDropdown from '../components/ProfileDropdown.vue';
         import Button from '../components/Button.vue';

@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import Modal from './Modal.vue';
 import Button from './Button.vue';
-import { LinkIcon, ArrowUpTrayIcon, DocumentArrowDownIcon, EyeIcon, GlobeAltIcon } from '@heroicons/vue/24/outline';
+import { LinkIcon, ArrowUpTrayIcon, DocumentArrowDownIcon, EyeIcon, GlobeAltIcon, ExclamationTriangleIcon } from '@heroicons/vue/24/outline';
+import { useToast } from 'vue-toastification';
+import { getCertificateUrl as getCertificateUrlUtil } from '../services/certificateUtils';
 
 const props = defineProps<{
   show: boolean;
@@ -21,7 +23,28 @@ const props = defineProps<{
   } | null;
 }>();
 
-const emit = defineEmits(['close', 'send-certificate']);
+const emit = defineEmits(['close', 'send-certificate', 'reupload-certificate']);
+
+const toast = useToast();
+const certificateError = ref<string | null>(null);
+
+const hasCertificate = computed(() => {
+  const curso = props.curso;
+  return !!curso?.certificado_id || !!curso?.certificado_file_path || !!curso?.certificado_link;
+});
+
+const showReuploadButton = computed(() => {
+  if (!hasCertificate.value) return false;
+  const curso = props.curso;
+  if (!curso) return false;
+  const reuploadStatuses = ['Realizado', 'Recusado'];
+  return reuploadStatuses.includes(curso.status || '');
+});
+
+// Reset error when modal opens or course changes
+watch([() => props.show, () => props.curso?.id], () => {
+  certificateError.value = null;
+});
 
 const handleSendCertificateClick = () => {
   if (props.curso?.atribuicaoId) {
@@ -49,25 +72,14 @@ const getStatusClass = (status: string) => {
 const certificateUrl = computed(() => {
   const curso = props.curso;
   if (!curso) return null;
-
-  const backendBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-
-  if (curso.certificado_file_path) {
-    // Extrair apenas o nome do arquivo do caminho completo
-    const fileName = curso.certificado_file_path.split('/').pop();
-    return `${backendBaseUrl}/api/certificados/download/${fileName}`;
-  }
-  if (curso.certificado_link) {
-    return curso.certificado_link;
-  }
-  return null;
+  return getCertificateUrlUtil(curso);
 });
 
 const certificateButtonText = computed(() => {
   const curso = props.curso;
   if (!curso || !certificateUrl.value) return '';
   if (curso.certificado_file_path?.endsWith('.pdf')) {
-    return 'Baixar Certificado';
+    return 'Visualizar Certificado';
   }
   if (curso.certificado_file_path) {
     return 'Visualizar Certificado';
@@ -82,7 +94,7 @@ const certificateButtonIcon = computed(() => {
   const curso = props.curso;
   if (!curso || !certificateUrl.value) return null;
   if (curso.certificado_file_path?.endsWith('.pdf')) {
-    return DocumentArrowDownIcon;
+    return EyeIcon;
   }
   if (curso.certificado_file_path) {
     return EyeIcon;
@@ -98,15 +110,19 @@ const showCertificateButton = computed(() => {
   if (!curso) return false;
 
   const hasCertificateUrl = !!certificateUrl.value;
-  const isRealizadoOrValidado = ['REALIZADO', 'VALIDADO'].includes(curso.status || '');
+  const validStatuses = ['Realizado', 'Concluído', 'Validado'];
+  const hasValidStatus = validStatuses.includes(curso.status || '');
 
-  return hasCertificateUrl && isRealizadoOrValidado;
+  return hasCertificateUrl && hasValidStatus;
 });
 
 const handleCertificateButtonClick = () => {
-  if (certificateUrl.value) {
-    window.open(certificateUrl.value, '_blank');
-  }
+  certificateError.value = null;
+
+  if (!certificateUrl.value) return;
+
+  // Abre diretamente em nova aba — o backend retornará 404 se o arquivo não existir
+  window.open(certificateUrl.value, '_blank');
 };
 </script>
 
@@ -164,11 +180,19 @@ const handleCertificateButtonClick = () => {
             </template>
             {{ certificateButtonText }}
           </Button>
+          <Button v-if="showReuploadButton" type="button" @click="emit('reupload-certificate', props.curso?.atribuicaoId)" variant="warning">
+            <template #icon><ArrowUpTrayIcon class="h-5 w-5" /></template>
+            Reenviar Certificado
+          </Button>
           <Button v-if="curso?.status === 'Em Andamento'" type="button" @click="handleSendCertificateClick" variant="primary">
             <template #icon><ArrowUpTrayIcon class="h-5 w-5" /></template>
             Enviar Certificado
           </Button>
         </div>
+      </div>
+      <div v-if="certificateError" class="mt-3 flex items-center space-x-2 text-sm text-red-600">
+        <ExclamationTriangleIcon class="h-5 w-5" />
+        <span>{{ certificateError }}</span>
       </div>
     </template>
   </Modal>

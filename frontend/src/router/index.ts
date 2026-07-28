@@ -8,6 +8,7 @@ import GestaoUsuarios from '../views/GestaoUsuarios.vue';
 import RelatoriosUdp from '../views/RelatoriosUdp.vue';
 import RelatoriosChefia from '../views/RelatoriosChefia.vue';
 import RelatoriosCapacitacoes from '../views/RelatoriosCapacitacoes.vue';
+import RelatorioConsolidado from '../views/RelatorioConsolidado.vue';
 import ValidacaoCertificados from '../views/ValidacaoCertificados.vue';
 
 const routes = [
@@ -57,7 +58,19 @@ const routes = [
     path: '/relatorios/chefia',
     name: 'Relatórios Chefia',
     component: RelatoriosChefia,
-    meta: { requiresAuth: true, requiresProfile: ['Chefia', 'UDP'] },
+    meta: { requiresAuth: true, requiresProfile: ['Chefia', 'UDP'], role: 'CHEFIA' },
+  },
+  {
+    path: '/relatorios/consolidado/chefia',
+    name: 'Relatório Consolidado Chefia',
+    component: RelatorioConsolidado,
+    meta: { requiresAuth: true, requiresProfile: ['Chefia', 'UDP'], role: 'CHEFIA' },
+  },
+  {
+    path: '/relatorios/consolidado/udp',
+    name: 'Relatório Consolidado UDP',
+    component: RelatorioConsolidado,
+    meta: { requiresAuth: true, requiresProfile: 'UDP' },
   },
   {
     path: '/validacao-certificados',

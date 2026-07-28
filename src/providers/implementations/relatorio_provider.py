@@ -14,14 +14,20 @@ class RelatorioProvider(RelatorioProviderInterface):
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def listar_dados_capacitacoes(self) -> List[Dict[str, Any]]:
+    async def listar_dados_capacitacoes(
+        self,
+        ano: str | None = None,
+        vinculo: str | None = None
+    ) -> List[Dict[str, Any]]:
         """
         Retorna uma lista de dicionários contendo todos os dados detalhados
         para o relatório de capacitações.
+        Suporta filtros opcionais por ano e vínculo.
         """
         # Define a query principal, começando por Atribuicao para ligar Usuario e Curso
         query = (
             select(
+                Usuario.id,
                 Usuario.cpf,
                 Usuario.vinculo,
                 Usuario.lotacao.label("setor"),
@@ -38,6 +44,14 @@ class RelatorioProvider(RelatorioProviderInterface):
             .join(Curso, Atribuicao.curso_id == Curso.id)
             .outerjoin(Certificado, Atribuicao.certificado_id == Certificado.id) # LEFT JOIN para incluir cursos sem certificado
         )
+
+        # Aplicar filtro por vínculo
+        if vinculo:
+            query = query.where(Usuario.vinculo == vinculo)
+
+        # Aplicar filtro por ano
+        if ano:
+            query = query.where(Curso.ano_gd == str(ano))
         
         result = await self.session.execute(query)
         
@@ -51,9 +65,15 @@ class RelatorioProvider(RelatorioProviderInterface):
             
         return report_data
 
-    async def get_status_lotacao(self, lotacao: str) -> List[Dict[str, Any]]:
+    async def get_status_lotacao(
+        self,
+        lotacao: str,
+        ano: str | None = None,
+        vinculo: str | None = None
+    ) -> List[Dict[str, Any]]:
         """
         Retorna o status consolidado das atribuições para uma lotação específica (KPIs).
+        Suporta filtros opcionais por ano e vínculo.
         """
         query = (
             select(
@@ -62,51 +82,82 @@ class RelatorioProvider(RelatorioProviderInterface):
             )
             .join(Usuario, Atribuicao.user_id == Usuario.id)
             .where(Usuario.lotacao == lotacao)
-            .group_by(Atribuicao.status)
         )
+
+        if vinculo:
+            query = query.where(Usuario.vinculo == vinculo)
+
+        # Filtro por ano via data_conclusao
+        if ano:
+            query = query.where(func.strftime('%Y', Atribuicao.data_conclusao) == str(ano))
+
+        query = query.group_by(Atribuicao.status)
         result = await self.session.execute(query)
         
         return [{"name": row.status.value if hasattr(row.status, 'value') else row.status, "value": row.total} for row in result.all()]
 
-    async def get_progresso_equipe(self, lotacao: str) -> List[Dict[str, Any]]:
+    async def get_progresso_equipe(
+        self,
+        lotacao: str,
+        ano: str | None = None,
+        vinculo: str | None = None
+    ) -> List[Dict[str, Any]]:
         """
         Retorna o progresso individual detalhado dos membros da equipe da lotação.
+        Suporta filtros opcionais por ano e vínculo.
         """
         # Calcula o progresso por usuário no setor
-        # Status considerados concluídos: 'REALIZADO', 'Concluído', 'Validado' (se existir no enum)
+        # Status considerados concluídos: 'Realizado', 'Concluído', 'Validado'
         stmt = (
             select(
+                Usuario.id,
                 Usuario.nome,
                 Usuario.matricula,
                 Usuario.cargo,
+                Usuario.vinculo,
                 func.count(Atribuicao.id).label("total_atribuicoes"),
                 func.sum(
                     case(
-                        (Atribuicao.status.in_(['REALIZADO', 'Concluído', 'Validado']), 1),
+                        (Atribuicao.status.in_(['Realizado', 'Concluído', 'Validado']), 1),
                         else_=0
                     )
                 ).label("total_concluido")
             )
             .outerjoin(Atribuicao, Usuario.id == Atribuicao.user_id)
             .where(Usuario.lotacao == lotacao)
-            .group_by(Usuario.id, Usuario.nome, Usuario.matricula, Usuario.cargo)
         )
-        
+
+        # Aplicar filtro por ano (usando data_conclusao da Atribuicao)
+        if ano:
+            stmt = stmt.outerjoin(
+                Atribuicao, (Usuario.id == Atribuicao.user_id) & (Atribuicao.data_conclusao != None)
+            )
+
+        # Aplicar filtro por vínculo
+        if vinculo:
+            stmt = stmt.where(Usuario.vinculo == vinculo)
+
+        stmt = stmt.group_by(Usuario.id, Usuario.nome, Usuario.matricula, Usuario.cargo, Usuario.vinculo)
+
         result = await self.session.execute(stmt)
-        
+
         team_progress = []
         for row in result.all():
             total = row.total_atribuicoes or 0
             concluido = row.total_concluido or 0
             progresso = (concluido / total * 100) if total > 0 else 0.0
-            
+
+            vinculo_display = row.vinculo if row.vinculo else "Não informado"
+
             team_progress.append({
+                "id": row.id,
                 "nome": row.nome,
                 "matricula": row.matricula,
                 "cargo": row.cargo,
+                "vinculo": vinculo_display,
                 "total_cursos": total,
                 "concluidos": concluido,
                 "progresso": round(progresso, 1)
             })
-            
+
         return team_progress

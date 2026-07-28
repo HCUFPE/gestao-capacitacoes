@@ -22,4 +22,9 @@ export default defineConfig({
       ignored: ['**/*.py'],
     },
   },
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: './tests/setup.ts',
+  },
 })

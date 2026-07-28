@@ -48,8 +48,20 @@ async def registrar_certificado_upload(
     db: AsyncSession = Depends(get_app_db_session)
 ):
     """
-    Registra um novo certificado fazendo o upload de um arquivo PDF.
+    Registra ou atualiza um certificado fazendo o upload de um arquivo.
     """
+    # Obter a atribuição
+    atribuicao = await atribuicao_controller.obter_atribuicao_por_id(db, atribuicao_id)
+    if not atribuicao:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Atribuição não encontrada")
+
+    # 1.1 Impedir re-upload se já estiver Validado ou Concluído
+    if atribuicao.status in [StatusAtribuicao.VALIDADO, StatusAtribuicao.CONCLUIDO]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Não é possível alterar o certificado de uma atribuição já concluída ou validada."
+        )
+
     # Garante que o diretório de uploads existe
     os.makedirs(UPLOADS_DIR, exist_ok=True)
     
@@ -58,28 +70,49 @@ async def registrar_certificado_upload(
     unique_filename = f"{uuid.uuid4()}{file_extension}"
     file_path = os.path.join(UPLOADS_DIR, unique_filename)
     
-    # Salva o arquivo
+    # Salva o novo arquivo
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    # Cria a entrada do certificado no banco
-    # Obter o curso_id da atribuição
-    atribuicao = await atribuicao_controller.obter_atribuicao_por_id(db, atribuicao_id)
-    if not atribuicao:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Atribuição não encontrada")
+    old_file_path = None
+    certificado_existente = None
 
-    certificado_data = {"file_path": file_path, "curso_id": atribuicao.curso_id}
-    novo_certificado = await certificado_controller.registrar_certificado(db, certificado_data)
+    # 1.2 Verificar se a atribuição já possui um certificado_id
+    if atribuicao.certificado_id:
+        certificado_existente = await certificado_controller.obter_certificado_por_id(db, atribuicao.certificado_id)
+        if certificado_existente:
+            old_file_path = certificado_existente.file_path
 
-    # Atualiza a atribuição
+    if certificado_existente:
+        # 1.4 Atualizar a entrada de Certificado existente em vez de criar uma nova
+        certificado_existente.file_path = file_path
+        certificado_existente.link = None
+        certificado_existente.curso_id = atribuicao.curso_id
+        db.add(certificado_existente)
+        await db.commit()
+        await db.refresh(certificado_existente)
+        certificado_retorno = certificado_existente
+    else:
+        certificado_data = {"file_path": file_path, "curso_id": atribuicao.curso_id}
+        certificado_retorno = await certificado_controller.registrar_certificado(db, certificado_data)
+
+    # 1.3 Se um certificado existente possuir um file_path, removê-lo do disco após salvar o novo arquivo
+    if old_file_path and os.path.exists(old_file_path):
+        try:
+            os.remove(old_file_path)
+        except Exception:
+            # Ignora erros ao tentar remover arquivo antigo (ex: arquivo já deletado)
+            pass
+
+    # 1.5 Modificar o status da Atribuicao para REALIZADO usando o atribuicao_controller
     await atribuicao_controller.atualizar_atribuicao_com_certificado(
         db=db,
         atribuicao_id=atribuicao_id,
-        certificado_id=novo_certificado.id,
+        certificado_id=certificado_retorno.id,
         novo_status=StatusAtribuicao.REALIZADO
     )
 
-    return novo_certificado
+    return certificado_retorno
 
 @router.post("/link", response_model=CertificadoResponse, dependencies=[Depends(auth_handler.decode_token)])
 async def registrar_certificado_link(
@@ -87,20 +120,59 @@ async def registrar_certificado_link(
     db: AsyncSession = Depends(get_app_db_session)
 ):
     """
-    Registra um novo certificado a partir de um link externo.
+    Registra ou atualiza um certificado a partir de um link externo.
     """
-    # Cria a entrada do certificado no banco
-    novo_certificado = await certificado_controller.registrar_certificado(db, {"link": certificado_data.link})
+    # Obter a atribuição
+    atribuicao = await atribuicao_controller.obter_atribuicao_por_id(db, certificado_data.atribuicao_id)
+    if not atribuicao:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Atribuição não encontrada")
 
-    # Atualiza a atribuição
+    # Impedir re-upload se já estiver Validado ou Concluído
+    if atribuicao.status in [StatusAtribuicao.VALIDADO, StatusAtribuicao.CONCLUIDO]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Não é possível alterar o certificado de uma atribuição já concluída ou validada."
+        )
+
+    old_file_path = None
+    certificado_existente = None
+
+    if atribuicao.certificado_id:
+        certificado_existente = await certificado_controller.obter_certificado_por_id(db, atribuicao.certificado_id)
+        if certificado_existente:
+            old_file_path = certificado_existente.file_path
+
+    if certificado_existente:
+        # Atualizar a entrada de Certificado existente
+        certificado_existente.file_path = None
+        certificado_existente.link = certificado_data.link
+        certificado_existente.curso_id = atribuicao.curso_id
+        db.add(certificado_existente)
+        await db.commit()
+        await db.refresh(certificado_existente)
+        certificado_retorno = certificado_existente
+    else:
+        certificado_retorno = await certificado_controller.registrar_certificado(db, {
+            "link": certificado_data.link,
+            "curso_id": atribuicao.curso_id
+        })
+
+    # Se antes tinha um arquivo local, remove-o do disco
+    if old_file_path and os.path.exists(old_file_path):
+        try:
+            os.remove(old_file_path)
+        except Exception:
+            pass
+
+    # Modificar o status da Atribuicao para REALIZADO
     await atribuicao_controller.atualizar_atribuicao_com_certificado(
         db=db,
         atribuicao_id=certificado_data.atribuicao_id,
-        certificado_id=novo_certificado.id,
+        certificado_id=certificado_retorno.id,
         novo_status=StatusAtribuicao.REALIZADO
     )
     
-    return novo_certificado
+    return certificado_retorno
 
 @router.get("/{certificado_id}", response_model=CertificadoResponse, dependencies=[Depends(auth_handler.decode_token)])
 async def obter_certificado(
@@ -121,10 +193,10 @@ async def validar_certificado(
     """
     Valida ou recusa a submissão de um certificado. (Requer perfil de Chefia ou UDP)
     """
-    if validacao.status not in [StatusAtribuicao.VALIDADO, StatusAtribuicao.RECUSADO]:
+    if validacao.status not in [StatusAtribuicao.CONCLUIDO, StatusAtribuicao.RECUSADO]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="O status de validação deve ser 'Validado' ou 'Recusado'."
+            detail="O status de valida\u00e7\u00e3o deve ser 'Concl\u00fado' ou 'Recusado'."
         )
     
     await atribuicao_controller.validar_atribuicao(

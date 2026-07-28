@@ -40,6 +40,9 @@
           </template>
           <template #actions="{ item }">
             <div class="flex items-center space-x-2">
+              <Button @click="openAssignModal(item)" variant="info" size="sm" title="Atribuir a Equipe">
+                <template #icon><UserGroupIcon class="h-4 w-4" /></template>
+              </Button>
               <Button @click="openEditModal(item)" variant="secondary" size="sm" title="Editar">
                 <template #icon><PencilIcon class="h-4 w-4" /></template>
               </Button>
@@ -207,6 +210,83 @@
       </template>
     </Modal>
 
+    <!-- Granular Assignment Modal -->
+    <Modal :show="isAssignModalOpen" @close="closeAssignModal" size="3xl">
+      <template #header>
+        <h2 class="text-xl font-semibold">Atribuir Curso à Equipe</h2>
+      </template>
+      <div class="mt-4">
+        <p class="text-sm text-gray-600 mb-2">
+          <strong>{{ assignCursoTitulo }}</strong>
+        </p>
+        <p class="text-xs text-gray-500 mb-4">
+          Selecione os usuários que receberão este curso. Deixe desmarcado para atribuir a toda a equipe.
+        </p>
+
+        <!-- Search filter -->
+        <div class="mb-3">
+          <input
+            v-model="assignSearchQuery"
+            type="text"
+            placeholder="Buscar usuário por nome..."
+            class="w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm"
+          />
+        </div>
+
+        <!-- Bulk assign option -->
+        <div class="mb-3 p-3 bg-blue-50 rounded-md border border-blue-200">
+          <label class="flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              v-model="assignAllTeam"
+              class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+            />
+            <span class="ml-2 text-sm font-medium text-blue-800">Atribuir a toda a equipe</span>
+          </label>
+        </div>
+
+        <!-- User list -->
+        <div v-if="!assignAllTeam" class="max-h-64 overflow-y-auto border border-gray-200 rounded-md">
+          <div v-if="filteredLotacaoUsers.length === 0" class="p-4 text-center text-sm text-gray-500">
+            Nenhum usuário encontrado na sua lotação.
+          </div>
+          <div
+            v-for="user in filteredLotacaoUsers"
+            :key="user.id"
+            class="flex items-center px-3 py-2 hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
+          >
+            <input
+              :id="`assign-user-${user.id}`"
+              type="checkbox"
+              :value="user.id"
+              v-model="selectedAssignUsers"
+              class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+            />
+            <label :for="`assign-user-${user.id}`" class="ml-3 block text-sm text-gray-900 cursor-pointer flex-1">
+              <span class="font-medium">{{ user.nome }}</span>
+              <span v-if="user.email" class="text-gray-500 ml-2">({{ user.email }})</span>
+            </label>
+          </div>
+        </div>
+
+        <p v-if="!assignAllTeam && selectedAssignUsers.length > 0" class="mt-2 text-sm text-gray-600">
+          {{ selectedAssignUsers.length }} usuário(s) selecionado(s)
+        </p>
+      </div>
+      <template #footer>
+        <div class="flex justify-end space-x-4">
+          <Button type="button" @click="closeAssignModal" variant="default">
+            <template #icon><XMarkIcon class="h-5 w-5" /></template>
+            Cancelar
+          </Button>
+          <Button @click="confirmAssign" variant="primary" :loading="isAssigning" :disabled="!canConfirmAssign">
+            <template #icon><CheckIcon class="h-5 w-5" /></template>
+            {{ assignAllTeam ? 'Atribuir a Todos' : `Atribuir a ${selectedAssignUsers.length} Selecionado(s)` }}
+          </Button>
+        </div>
+      </template>
+    </Modal>
+
     <!-- Delete Confirmation Modal -->
     <Modal :show="isConfirmModalOpen" @close="closeConfirmModal">
       <template #header>
@@ -235,7 +315,7 @@ import { Form, Field, ErrorMessage } from 'vee-validate';
 import { toTypedSchema } from '@vee-validate/zod';
 import * as z from 'zod';
 import { useToast } from 'vue-toastification';
-import { PlusIcon, AcademicCapIcon, PencilIcon, TrashIcon, LinkIcon, CheckIcon, XMarkIcon, TagIcon } from '@heroicons/vue/24/outline';
+import { PlusIcon, AcademicCapIcon, PencilIcon, TrashIcon, LinkIcon, CheckIcon, XMarkIcon, TagIcon, UserGroupIcon } from '@heroicons/vue/24/outline';
 
 import api from '../services/api';
 import Card from '../components/Card.vue';
@@ -270,6 +350,26 @@ const editingCursoId = ref<string | null>(null);
 const isConfirmModalOpen = ref(false);
 const cursoToDeleteId = ref<string | null>(null);
 const isDeleting = ref(false);
+
+// Assignment modal state
+const isAssignModalOpen = ref(false);
+const assignCursoId = ref<string | null>(null);
+const assignCursoTitulo = ref('');
+const lotacaoUsers = ref<any[]>([]);
+const selectedAssignUsers = ref<string[]>([]);
+const assignSearchQuery = ref('');
+const assignAllTeam = ref(false);
+const isAssigning = ref(false);
+
+const filteredLotacaoUsers = computed(() => {
+  if (!assignSearchQuery.value) return lotacaoUsers.value;
+  const q = assignSearchQuery.value.toLowerCase();
+  return lotacaoUsers.value.filter(u => u.nome.toLowerCase().includes(q));
+});
+
+const canConfirmAssign = computed(() => {
+  return assignAllTeam.value || selectedAssignUsers.value.length > 0;
+});
 
 // Pagination and Filter State
 const page = ref(1);
@@ -469,6 +569,62 @@ const openDeleteModal = (cursoId: string) => {
 const closeConfirmModal = () => {
   isConfirmModalOpen.value = false;
   cursoToDeleteId.value = null;
+};
+
+// Assignment modal functions
+const openAssignModal = async (curso: any) => {
+  assignCursoId.value = curso.id;
+  assignCursoTitulo.value = curso.titulo;
+  selectedAssignUsers.value = [];
+  assignSearchQuery.value = '';
+  assignAllTeam.value = false;
+  isAssignModalOpen.value = true;
+
+  // Fetch lotacao users if not already loaded
+  if (lotacaoUsers.value.length === 0) {
+    try {
+      const { data } = await api.get('/api/atribuicoes/lotacao/usuarios');
+      lotacaoUsers.value = data;
+    } catch (err: any) {
+      toast.error('Falha ao carregar a lista de usuários da lotação.');
+    }
+  }
+};
+
+const closeAssignModal = () => {
+  isAssignModalOpen.value = false;
+  assignCursoId.value = null;
+  selectedAssignUsers.value = [];
+  assignSearchQuery.value = '';
+  assignAllTeam.value = false;
+};
+
+const confirmAssign = async () => {
+  if (!assignCursoId.value) return;
+
+  isAssigning.value = true;
+  try {
+    if (assignAllTeam.value) {
+      // Bulk assign to entire team via course update
+      await api.put(`/api/cursos/${assignCursoId.value}`, {
+        ...cursos.value.find(c => c.id === assignCursoId.value),
+        atribuir_a_todos: true,
+      });
+      toast.success('Curso atribuído a toda a equipe!');
+    } else {
+      // Granular assign to selected users
+      await api.post('/api/atribuicoes/lotacao', {
+        curso_id: assignCursoId.value,
+        user_ids: selectedAssignUsers.value,
+      });
+      toast.success(`Curso atribuído a ${selectedAssignUsers.value.length} usuário(s)!`);
+    }
+    closeAssignModal();
+  } catch (err: any) {
+    toast.error(`Erro ao atribuir o curso: ${err.response?.data?.detail || err.message}`);
+  } finally {
+    isAssigning.value = false;
+  }
 };
 
 const confirmDelete = async () => {

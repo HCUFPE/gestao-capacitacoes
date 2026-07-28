@@ -1,8 +1,9 @@
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, Request, Response, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.responses import FileResponse
 import os
+import mimetypes
 import traceback
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
@@ -105,19 +106,24 @@ app.include_router(atribuicao.router)
 app.include_router(utils.router)
 app.include_router(inscricao.router)
 
-# Rota para download forçado de certificados
+# Rota para download/visualização de certificados
 @app.get("/api/certificados/download/{file_name:path}")
 async def download_certificado(file_name: str):
     file_path = os.path.join("src", "static", "uploads", file_name)
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="Certificado não encontrado")
     
-    # Força o download do arquivo
+    # Resolve o Content-Type correto baseado na extensão do arquivo
+    content_type, _ = mimetypes.guess_type(file_path)
+    if not content_type:
+        content_type = "application/octet-stream"
+
+    # Serve o arquivo com Content-Disposition inline para visualização no navegador
     return FileResponse(
         path=file_path,
-        media_type="application/octet-stream",
+        media_type=content_type,
         filename=file_name,
-        headers={"Content-Disposition": f"attachment; filename={file_name}"}
+        headers={"Content-Disposition": f"inline; filename=\"{file_name}\""}
     )
 
 # Exemplo:

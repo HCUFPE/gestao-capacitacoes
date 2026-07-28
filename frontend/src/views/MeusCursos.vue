@@ -25,7 +25,11 @@
         <div class="space-y-4">
           <CourseCard v-for="inscricao in enrolledCourses" :key="inscricao.id" :curso="{ ...inscricao.curso, status: inscricao.status, atribuicaoId: inscricao.atribuicao_id }" @send-certificate="handleSendCertificate">
             <template #secondary-action>
-              <Button @click="handleUnenroll(inscricao.id)" variant="danger" type="button">
+              <Button v-if="['Realizado', 'Concluído', 'Validado'].includes(inscricao.status)" @click="handleSendCertificate(inscricao.atribuicao_id, true)" variant="warning" type="button">
+                <template #icon><ArrowUpTrayIcon class="h-5 w-5" /></template>
+                Reenviar
+              </Button>
+              <Button v-if="['Realizado', 'Concluído', 'Validado'].includes(inscricao.status)" @click="handleUnenroll(inscricao.id)" variant="danger" type="button">
                 <template #icon><XCircleIcon class="h-5 w-5" /></template>
                 Desinscrever-se
               </Button>
@@ -52,6 +56,12 @@
         </h2>
         <div class="space-y-4">
           <CourseCard v-for="atribuicao in filteredAssignedCourses" :key="atribuicao.id" :curso="{ ...atribuicao.curso, status: atribuicao.status, atribuicaoId: atribuicao.id }" @send-certificate="handleSendCertificate">
+            <template #secondary-action>
+              <Button v-if="['Realizado', 'Concluído', 'Validado'].includes(atribuicao.status)" @click="handleSendCertificate(atribuicao.id, true)" variant="warning" type="button">
+                <template #icon><ArrowUpTrayIcon class="h-5 w-5" /></template>
+                Reenviar
+              </Button>
+            </template>
             <template #primary-action>
               <Button v-if="atribuicao.status === 'Pendente'" variant="success" type="button" @click="handleEnroll(atribuicao.curso.id)">
                 <template #icon><CheckCircleIcon class="h-5 w-5" /></template>
@@ -95,8 +105,8 @@
       </div>
     </div>
 
-    <CertificateUploadModal :show="isUploadModalOpen" :atribuicao-id="selectedAtribuicaoId" @close="isUploadModalOpen = false" @upload-success="onUploadSuccess" />
-    <CourseDetailsModal :show="isDetailsModalOpen" :curso="selectedCourseForDetails" @close="isDetailsModalOpen = false" @send-certificate="handleSendCertificate" />
+    <CertificateUploadModal :show="isUploadModalOpen" :atribuicao-id="selectedAtribuicaoId" :is-replacement="isReplacementMode" @close="isUploadModalOpen = false; isReplacementMode = false" @upload-success="onUploadSuccess" />
+    <CourseDetailsModal :show="isDetailsModalOpen" :curso="selectedCourseForDetails" @close="isDetailsModalOpen = false" @send-certificate="handleSendCertificate" @reupload-certificate="(id: string) => handleSendCertificate(id, true)" />
     <CourseCatalogModal 
       :show="isCatalogModalOpen" 
       :courses="genericCourses" 
@@ -132,6 +142,7 @@ const isCatalogModalOpen = ref(false);
 // State for Upload Modal
 const isUploadModalOpen = ref(false);
 const selectedAtribuicaoId = ref<string | null>(null);
+const isReplacementMode = ref(false);
 
 // State for Details Modal
 const isDetailsModalOpen = ref(false);
@@ -231,9 +242,10 @@ const handleCatalogEnroll = (cursoId: string) => {
   handleEnroll(cursoId);
 };
 
-const handleSendCertificate = (atribuicaoId: string) => {
+const handleSendCertificate = (atribuicaoId: string, isReplacement = false) => {
   isDetailsModalOpen.value = false; // Close details modal if open
   selectedAtribuicaoId.value = atribuicaoId;
+  isReplacementMode.value = isReplacement;
   isUploadModalOpen.value = true;
 };
 

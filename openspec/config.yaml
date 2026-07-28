@@ -1,0 +1,31 @@
+schema: spec-driven
+context: |
+    Tech stack: Python (FastAPI, SQLAlchemy, reportlab), Vue.js 3 (TypeScript, Vite, Pinia, vue-router)
+    Backend: Routers -> Controllers -> Providers (interfaces + implementations) -> Resources -> SQL Templates
+    Frontend: Views -> Components -> Services (api.ts) -> Stores (Pinia)
+    Database: PostgreSQL (AGHU), Oracle (AGHU), SQLite (Local)
+    Auth: JWT + Active Directory
+
+    ## Testing Rule (MANDATORY)
+    Every spec must be covered by automated tests. When implementing a change:
+    - **Backend**: Write pytest tests for every new/modified controller function and provider method.
+      Place tests in `tests/` mirroring the source structure (e.g., `tests/test_relatorio_controller.py`).
+      Cover happy path, error cases, and permission boundaries.
+    - **Frontend**: Write unit tests with vitest for new/modified components and composables.
+      Place tests alongside source files (e.g., `RelatoriosChefia.test.ts` or `__tests__/RelatoriosChefia.test.ts`).
+      Cover rendering, user interactions, and API call integrations.
+    - Tasks.md MUST include explicit test tasks (one per feature/task group).
+    - Do NOT mark test tasks as completed without actually writing the test files.
+    - Run `pytest` and `npx vitest run` (or equivalent) to verify before marking complete.
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+#   rules:
+#     proposal:
+#       - Keep proposals under 500 words
+#       - Always include a "Non-goals" section
+#     tasks:
+#       - Break tasks into chunks of max 2 hours
+#       - Always include test tasks for each feature
+#       - Mark test tasks complete ONLY after test files are written and passing

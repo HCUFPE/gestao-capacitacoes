@@ -1,7 +1,7 @@
 <template>
   <Modal :show="show" @close="$emit('close')">
     <template #header>
-      <h2 class="text-xl font-semibold">Enviar Certificado</h2>
+      <h2 class="text-xl font-semibold">{{ modalTitle }}</h2>
     </template>
     
     <div class="mt-4">
@@ -36,7 +36,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useToast } from 'vue-toastification';
 import { XCircleIcon, ArrowUpTrayIcon } from '@heroicons/vue/24/outline';
 import Modal from './Modal.vue';
@@ -46,9 +46,12 @@ import api from '../services/api';
 const props = defineProps<{
   show: boolean;
   atribuicaoId: string | null;
+  isReplacement?: boolean;
 }>();
 
 const emit = defineEmits(['close', 'upload-success']);
+
+const modalTitle = computed(() => (props.isReplacement ? 'Reenviar Certificado' : 'Enviar Certificado'));
 
 const file = ref<File | null>(null);
 const isUploading = ref(false);
@@ -76,7 +79,7 @@ const handleUpload = async () => {
       },
     });
 
-    toast.success('Certificado enviado com sucesso!');
+    toast.success(props.isReplacement ? 'Certificado substituído com sucesso!' : 'Certificado enviado com sucesso!');
     emit('upload-success');
   } catch (err: any) {
     toast.error(`Erro ao enviar o certificado: ${err.response?.data?.detail || err.message}`);

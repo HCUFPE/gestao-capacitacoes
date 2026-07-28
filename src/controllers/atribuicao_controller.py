@@ -35,6 +35,58 @@ async def criar_atribuicoes_para_lotacao(db: AsyncSession, curso_id: str, lotaca
     db.add_all(novas_atribuicoes)
     await db.commit()
 
+async def criar_atribuicoes_seletivas(db: AsyncSession, curso_id: str, user_ids: List[str], chefia_lotacao: str):
+    """
+    Cria registros de atribuição para usuários específicos de uma determinada lotação.
+    Valida que cada user_id pertence à lotação da chefia.
+    Ignora duplicações (usuário já com curso atribuído).
+    """
+    # 1. Buscar os IDs de usuários que já têm o curso atribuído (para ignorar duplicatas)
+    stmt_existing = (
+        select(Atribuicao.user_id)
+        .where(Atribuicao.curso_id == curso_id)
+    )
+    existing_result = await db.execute(stmt_existing)
+    existing_user_ids = set(existing_result.scalars().all())
+
+    # 2. Buscar os usuários solicitados e validar que pertencem à lotação da chefia
+    stmt_users = (
+        select(Usuario.id, Usuario.lotacao)
+        .where(Usuario.id.in_(user_ids))
+    )
+    users_result = await db.execute(stmt_users)
+    users = users_result.mappings().all()
+
+    new_assignments = []
+    for user in users:
+        user_id = user["id"]
+        user_lotacao = user["lotacao"]
+
+        # Validar que o usuário pertence à lotação da chefia
+        if user_lotacao != chefia_lotacao:
+            raise ValueError(f"Usuário {user_id} não pertence à lotação da chefia.")
+
+        # Ignorar duplicação
+        if user_id in existing_user_ids:
+            continue
+
+        new_assignments.append(
+            Atribuicao(
+                id=str(uuid4()),
+                user_id=user_id,
+                curso_id=curso_id,
+                status=StatusAtribuicao.PENDENTE,
+                data_atribuicao=datetime.utcnow()
+            )
+        )
+
+    if new_assignments:
+        db.add_all(new_assignments)
+        await db.commit()
+
+    return len(new_assignments)
+
+
 async def atualizar_atribuicao_com_certificado(
     db: AsyncSession,
     atribuicao_id: str,
@@ -96,6 +148,9 @@ async def listar_atribuicoes_por_usuario(db: AsyncSession, user_id: str) -> List
                 "curso_id": atribuicao.curso_id,
                 "status": atribuicao.status,
                 "atribuido_em": atribuicao.atribuido_em,
+                "certificado_id": atribuicao.certificado_id,
+                "certificado_file_path": atribuicao.certificado.file_path if atribuicao.certificado else None,
+                "certificado_link": atribuicao.certificado.link if atribuicao.certificado else None,
                 "curso": {
                     "id": atribuicao.curso.id,
                     "titulo": atribuicao.curso.titulo,
@@ -123,7 +178,7 @@ async def obter_atribuicao_por_id(db: AsyncSession, atribuicao_id: str) -> Atrib
 
 async def listar_atribuicoes_pendentes_validacao(db: AsyncSession, lotacao: str) -> List[dict]:
     """
-    Lista atribuições com status 'REALIZADO' para uma lotação específica,
+    Lista atribuições com status 'Realizado' para uma lotação específica,
     aguardando validação.
     """
     stmt = (
