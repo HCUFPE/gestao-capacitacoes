@@ -1,8 +1,10 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import delete
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
 from uuid import uuid4
+import csv
+import io
 
 from ..models import Curso, Atribuicao, Usuario, StatusAtribuicao
 from ..schemas.curso_schema import CursoCreate
@@ -191,3 +193,97 @@ async def listar_cursos_genericos(db: AsyncSession, excluded_course_ids: List[st
     
     result = await db.execute(stmt)
     return result.scalars().all()
+
+async def importar_cursos_csv(file_bytes: bytes, db: AsyncSession) -> Dict[str, Any]:
+    """
+    Importa cursos a partir de um arquivo CSV, realizando Upsert.
+    """
+    try:
+        content = file_bytes.decode('utf-8')
+    except UnicodeDecodeError:
+        content = file_bytes.decode('iso-8859-1')
+        
+    stream = io.StringIO(content)
+    # Tenta descobrir o delimitador
+    primeira_linha = stream.readline()
+    if not primeira_linha:
+        return {"novos": 0, "atualizados": 0, "erros": ["Arquivo vazio."]}
+        
+    delimitador = ';' if ';' in primeira_linha else ','
+    stream.seek(0)
+    
+    reader = csv.DictReader(stream, delimiter=delimitador)
+    
+    if not reader.fieldnames or 'id_curso' not in reader.fieldnames or 'nome_curso' not in reader.fieldnames:
+        return {"novos": 0, "atualizados": 0, "erros": ["Colunas obrigatórias 'id_curso' ou 'nome_curso' não encontradas."]}
+        
+    novos = 0
+    atualizados = 0
+    erros = []
+    
+    COLUMN_MAP = {
+        'id_curso': 'id',
+        'nome_curso': 'titulo',
+        'Link': 'link',
+        'eixos_tematicos': 'tema',
+        'certificador': 'certificadora',
+        'conteudista': 'conteudista',
+        'carga_horaria': 'carga_horaria',
+        'disponibilidade_dias': 'disponibilidade_dias',
+        'tipo_oferta': 'tipo_oferta',
+        'apresentacao': 'apresentacao',
+        'publico_alvo': 'publico_alvo',
+        'conteudo_programatico': 'conteudo_programatico',
+        'data_lancamento': 'data_lancamento',
+        'Acessibilidade': 'acessibilidade',
+        'Observacao': 'observacao'
+    }
+
+    for row_num, row in enumerate(reader, start=2): # +1 para header, +1 para 1-index
+        id_curso = row.get('id_curso', '').strip()
+        nome_curso = row.get('nome_curso', '').strip()
+        
+        if not id_curso or not nome_curso:
+            erros.append(f"Linha {row_num}: 'id_curso' ou 'nome_curso' ausentes.")
+            continue
+            
+        curso_kwargs = {}
+        for csv_col, db_col in COLUMN_MAP.items():
+            val = row.get(csv_col)
+            if val is not None:
+                val = val.strip()
+                if db_col in ['carga_horaria', 'disponibilidade_dias']:
+                    try:
+                        val = int(val) if val else None
+                    except ValueError:
+                        val = None
+                curso_kwargs[db_col] = val
+                
+        # Upsert logic
+        result = await db.execute(select(Curso).where(Curso.id == id_curso))
+        curso_existente = result.scalars().first()
+        
+        try:
+            if curso_existente:
+                atualizou = False
+                for k, v in curso_kwargs.items():
+                    # Ignorar id na atualização
+                    if k != 'id' and getattr(curso_existente, k) != v:
+                        setattr(curso_existente, k, v)
+                        atualizou = True
+                if atualizou:
+                    atualizados += 1
+            else:
+                novo_curso = Curso(**curso_kwargs)
+                db.add(novo_curso)
+                novos += 1
+        except Exception as e:
+            erros.append(f"Linha {row_num}: Erro ao processar curso {id_curso}: {str(e)}")
+            
+    await db.commit()
+    
+    return {
+        "novos": novos,
+        "atualizados": atualizados,
+        "erros": erros
+    }

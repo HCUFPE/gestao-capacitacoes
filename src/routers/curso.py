@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 
@@ -7,7 +7,7 @@ from ..auth.auth import auth_handler
 from ..resources.database import get_app_db_session
 from ..schemas.curso_schema import CursoCreate, CursoResponse, PaginatedCursoResponse
 from ..models import Curso
-from ..auth.dependencies import is_chefia, get_current_user
+from ..auth.dependencies import is_chefia, get_current_user, is_udp
 
 # --- Router Definition ---
 
@@ -57,8 +57,32 @@ async def deletar_curso(
     """Deleta um curso e suas atribuições. (Requer perfil de Chefia ou UDP)"""
     success = await curso_controller.deletar_curso(db, curso_id)
     if not success:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Curso não encontrado")
-    return
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Curso não encontrado.")
+    return None
+
+@router.post("/importar-csv", status_code=status.HTTP_200_OK, dependencies=[Depends(is_udp)])
+async def importar_cursos_csv(
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_app_db_session)
+):
+    """
+    Importa um catálogo de cursos a partir de um arquivo CSV (somente perfil UDP).
+    """
+    if not file.filename.endswith('.csv'):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Arquivo deve ser do tipo CSV.")
+    
+    file_bytes = await file.read()
+    
+    try:
+        resultado = await curso_controller.importar_cursos_csv(file_bytes, db)
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Erro ao processar arquivo: {str(e)}")
+        
+    if resultado.get("erros") and not resultado.get("novos") and not resultado.get("atualizados"):
+        # Se só teve erro e não inseriu/atualizou nada (ex: erro de formato no inicio)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="\n".join(resultado["erros"]))
+        
+    return resultado
 
 @router.get("/recommended", response_model=List[CursoResponse], dependencies=[Depends(auth_handler.decode_token)])
 async def listar_cursos_recomendados(

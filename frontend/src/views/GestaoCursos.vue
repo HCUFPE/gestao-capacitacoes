@@ -5,7 +5,10 @@
         <PageHeader title="Gestão de Cursos" :icon="AcademicCapIcon" />
       </template>
 
-      <div class="flex justify-end mb-4">
+      <div class="flex justify-end mb-4 space-x-2">
+        <Button @click="showImportModal = true" variant="secondary" type="button">
+          Importar Cursos (CSV)
+        </Button>
         <Button @click="openCreateModal" variant="primary" type="button">
           <template #icon><PlusIcon class="h-5 w-5" /></template>
           Criar Novo Curso
@@ -306,6 +309,12 @@
         </div>
       </template>
     </Modal>
+    
+    <ImportCursosModal 
+      :show="showImportModal" 
+      @close="showImportModal = false" 
+      @imported="fetchCursos" 
+    />
   </div>
 </template>
 
@@ -325,6 +334,7 @@ import DataTable from '../components/DataTable.vue';
 import PageHeader from '../components/PageHeader.vue';
 import Pagination from '../components/Pagination.vue';
 import FilterBar from '../components/FilterBar.vue';
+import ImportCursosModal from '../components/ImportCursosModal.vue';
 
 const toast = useToast();
 
@@ -337,6 +347,8 @@ const tableHeaders = ref([
   { text: 'Ano GD', value: 'ano_gd' },
   { text: 'Inscrição', value: 'link' },
 ]);
+
+const showImportModal = ref(false);
 
 const cursos = ref<any[]>([]);
 const lotacoesList = ref<string[]>([]);
