@@ -181,7 +181,7 @@
           </div>
 
           <!-- Checkbox for assigning to all -->
-          <div class="col-span-12 form-group mt-2">
+          <div class="col-span-12 form-group mt-2" v-if="authStore.isManagerOrAdmin">
             <div class="flex items-center">
               <input
                 type="checkbox"
@@ -335,12 +335,13 @@ import PageHeader from '../components/PageHeader.vue';
 import Pagination from '../components/Pagination.vue';
 import FilterBar from '../components/FilterBar.vue';
 import ImportCursosModal from '../components/ImportCursosModal.vue';
+import { useAuthStore } from '../stores/auth';
 
 const toast = useToast();
+const authStore = useAuthStore();
 
 const tableHeaders = ref([
   { text: 'Título', value: 'titulo' },
-  { text: 'Tema', value: 'tema' },
   { text: 'Certificadora', value: 'certificadora' },
   { text: 'CH', value: 'carga_horaria' },
   { text: 'Lotação', value: 'lotacao_id' },
@@ -391,8 +392,7 @@ const activeFilters = ref<Record<string, string>>({});
 
 // Filter definitions for FilterBar
 const filterDefinitions = ref([
-  { key: 'titulo', label: 'Título', placeholder: 'Buscar por título...', icon: AcademicCapIcon },
-  { key: 'tema', label: 'Tema', placeholder: 'Buscar por tema...', icon: TagIcon },
+  { key: 'titulo', label: 'Título/Tema', placeholder: 'Buscar por título ou tema...', icon: AcademicCapIcon },
 ]);
 
 const totalPages = computed(() => Math.ceil(total.value / limit.value));
@@ -521,7 +521,7 @@ const openCreateModal = () => {
   initialFormValues.value = {
     titulo: '',
     tema: '',
-    lotacao_id: '',
+    lotacao_id: authStore.isChefia ? (authStore.user?.department?.[0] || '') : '',
     ano_gd: new Date().getFullYear().toString(),
     carga_horaria: undefined,
     certificadora: '',
@@ -549,7 +549,7 @@ const openEditModal = (curso: any) => {
   initialFormValues.value = {
     titulo: curso.titulo,
     tema: curso.tema || '',
-    lotacao_id: curso.lotacao_id || '',
+    lotacao_id: curso.lotacao_id || (authStore.isChefia ? (authStore.user?.department?.[0] || '') : ''),
     ano_gd: curso.ano_gd || new Date().getFullYear().toString(),
     carga_horaria: curso.carga_horaria,
     certificadora: curso.certificadora || '',
@@ -617,10 +617,11 @@ const confirmAssign = async () => {
   isAssigning.value = true;
   try {
     if (assignAllTeam.value) {
-      // Bulk assign to entire team via course update
-      await api.put(`/api/cursos/${assignCursoId.value}`, {
-        ...cursos.value.find(c => c.id === assignCursoId.value),
-        atribuir_a_todos: true,
+      // Bulk assign to entire team
+      const allUserIds = lotacaoUsers.value.map(u => u.id);
+      await api.post('/api/atribuicoes/lotacao', {
+        curso_id: assignCursoId.value,
+        user_ids: allUserIds,
       });
       toast.success('Curso atribuído a toda a equipe!');
     } else {

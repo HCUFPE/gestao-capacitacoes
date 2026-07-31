@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy import delete
+from sqlalchemy import delete, or_
 from typing import List, Dict, Any, Tuple
 from uuid import uuid4
 import csv
@@ -19,7 +19,7 @@ async def listar_cursos(db: AsyncSession, skip: int = 0, limit: int = 10, titulo
     stmt = select(Curso)
     
     if titulo:
-        stmt = stmt.where(Curso.titulo.ilike(f"%{titulo}%"))
+        stmt = stmt.where(or_(Curso.titulo.ilike(f"%{titulo}%"), Curso.tema.ilike(f"%{titulo}%")))
     if tema:
         stmt = stmt.where(Curso.tema.ilike(f"%{tema}%"))
     

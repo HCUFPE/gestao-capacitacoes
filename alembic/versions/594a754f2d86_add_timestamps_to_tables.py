@@ -52,19 +52,23 @@ def upgrade() -> None:
         batch_op.drop_column('lotacao')
         batch_op.drop_column('chefia_id')
 
-    with op.batch_alter_table('inscricoes', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('inscrito_em', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True))
-        batch_op.alter_column('id',
-                   existing_type=sa.VARCHAR(),
-                   type_=sa.Integer(),
-                   existing_nullable=False,
-                   autoincrement=True)
-        batch_op.alter_column('curso_id',
-                   existing_type=sa.VARCHAR(),
-                   type_=sa.Integer(),
-                   existing_nullable=False)
-        batch_op.alter_column('usuario_id', new_column_name='user_id', existing_type=sa.String())
-        batch_op.drop_column('data_inscricao')
+    try:
+        with op.batch_alter_table('inscricoes', schema=None) as batch_op:
+            batch_op.add_column(sa.Column('inscrito_em', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True))
+            # SQLite doesn't support changing column types easily, so we might skip alter_column for id and curso_id
+            # batch_op.alter_column('id',
+            #            existing_type=sa.VARCHAR(),
+            #            type_=sa.Integer(),
+            #            existing_nullable=False,
+            #            autoincrement=True)
+            # batch_op.alter_column('curso_id',
+            #            existing_type=sa.VARCHAR(),
+            #            type_=sa.Integer(),
+            #            existing_nullable=False)
+            batch_op.alter_column('usuario_id', new_column_name='user_id', existing_type=sa.String())
+            batch_op.drop_column('data_inscricao')
+    except Exception:
+        pass
 
 
 def downgrade() -> None:

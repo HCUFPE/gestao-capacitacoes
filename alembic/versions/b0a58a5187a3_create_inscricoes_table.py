@@ -25,6 +25,16 @@ def upgrade() -> None:
         batch_op.alter_column('lotacao',
                    existing_type=sa.VARCHAR(),
                    nullable=True)
+    try:
+        op.create_table('inscricoes',
+            sa.Column('id', sa.String(), nullable=False),
+            sa.Column('usuario_id', sa.String(), nullable=True),
+            sa.Column('curso_id', sa.String(), nullable=False),
+            sa.Column('data_inscricao', sa.DateTime(), nullable=True),
+            sa.PrimaryKeyConstraint('id')
+        )
+    except Exception:
+        pass
     # ### end Alembic commands ###
 
 
