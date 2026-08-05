@@ -42,8 +42,8 @@ jobs:
           # Instala/Atualiza pacotes usando o interpretador do venv em produção
           sudo /var/app/gestao-capacitacoes/.venv/bin/pip install -r /var/app/gestao-capacitacoes/requirements.txt
           
-          # Caso queira rodar as migrações automaticamente no deploy, descomente a linha abaixo
-          # sudo cd /var/app/gestao-capacitacoes && /var/app/gestao-capacitacoes/.venv/bin/alembic upgrade head
+          # Executa as migrações do banco de dados (sem sh -c para evitar bloqueio do sudo)
+          cd /var/app/gestao-capacitacoes && sudo /var/app/gestao-capacitacoes/.venv/bin/alembic upgrade head
 
       - name: Restart Uvicorn Service
         run: |
