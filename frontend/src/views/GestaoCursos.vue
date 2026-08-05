@@ -27,7 +27,7 @@
         <p>Carregando cursos...</p>
       </div>
       <div v-else-if="error" class="text-center py-10 text-red-500">
-        <p>Ocorreu um erro ao carregar os cursos: {{ error.message }}</p>
+        <p>Ocorreu um erro ao carregar os cursos: {{ error.response?.data?.detail || error.message }}</p>
       </div>
       <div v-else-if="cursos.length === 0" class="text-center py-10 text-gray-500">
         <p>Nenhum curso encontrado. Crie o primeiro!</p>
@@ -354,7 +354,7 @@ const showImportModal = ref(false);
 const cursos = ref<any[]>([]);
 const lotacoesList = ref<string[]>([]);
 const loading = ref(false);
-const error = ref<Error | null>(null);
+const error = ref<any>(null);
 const dataLoaded = ref(false);
 const isModalOpen = ref(false);
 const isEditing = ref(false);

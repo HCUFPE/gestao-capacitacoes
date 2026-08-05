@@ -12,7 +12,7 @@
     </div>
 
     <div v-else-if="error" class="text-center text-red-500">
-      <p>Ocorreu um erro ao carregar os cursos: {{ error.message }}</p>
+      <p>Ocorreu um erro ao carregar os cursos: {{ error.response?.data?.detail || error.message }}</p>
     </div>
 
     <div v-else class="space-y-8">
@@ -133,7 +133,7 @@ const enrolledCourses = ref<any[]>([]);
 const recommendedCourses = ref<any[]>([]);
 const genericCourses = ref<any[]>([]);
 const loading = ref(true);
-const error = ref<Error | null>(null);
+const error = ref<any>(null);
 const toast = useToast();
 
 // State for Catalog Modal
