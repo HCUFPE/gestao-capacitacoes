@@ -1,0 +1,52 @@
+name: Deploy API Gestão de Capacitações
+
+on:
+  push:
+    branches:
+      - master # Altere se a branch principal for "main"
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js (se necessário no self-hosted)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build Frontend
+        run: |
+          cd frontend
+          npm install
+          npm run build
+
+      - name: Deploy to /var/app/gestao-capacitacoes
+        run: |
+          # Sincroniza os arquivos novos/modificados ignorando diretórios e arquivos indesejados (como .git e node_modules)
+          sudo rsync -av --delete \
+            --exclude '.git' \
+            --exclude '.github' \
+            --exclude '.venv' \
+            --exclude 'venv' \
+            --exclude 'frontend/node_modules' \
+            --exclude 'app.db' \
+            --exclude '.env' \
+            ./ /var/app/gestao-capacitacoes/
+
+      - name: Update Python Dependencies & Run Migrations
+        run: |
+          # Instala/Atualiza pacotes usando o interpretador do venv em produção
+          sudo /var/app/gestao-capacitacoes/.venv/bin/pip install -r /var/app/gestao-capacitacoes/requirements.txt
+          
+          # Caso queira rodar as migrações automaticamente no deploy, descomente a linha abaixo
+          # sudo cd /var/app/gestao-capacitacoes && /var/app/gestao-capacitacoes/.venv/bin/alembic upgrade head
+
+      - name: Restart Uvicorn Service
+        run: |
+          # Reinicia o serviço configurado no systemd
+          sudo systemctl daemon-reload
+          sudo systemctl restart gestao-capacitacoes.service
