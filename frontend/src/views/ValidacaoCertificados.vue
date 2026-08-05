@@ -132,7 +132,7 @@ const verCertificado = async (certificadoId: string) => {
   try {
     const { data: certificado } = await api.get(`/api/certificados/${certificadoId}`);
     const url = certificado.file_path 
-      ? `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/certificados/download/${certificado.file_path.split('/').pop()}`
+      ? `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/certificados/download/${certificado.file_path.split(/[\/\\]/).pop()}`
       : certificado.link;
     
     if (url) {

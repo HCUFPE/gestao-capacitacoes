@@ -22,7 +22,7 @@ export function getCertificateUrl(item: CertificateItem): string | null {
     return item.certificado_link;
   }
   if (item.certificado_file_path) {
-    const fileName = item.certificado_file_path.split('/').pop();
+    const fileName = item.certificado_file_path.split(/[\/\\]/).pop();
     return `${BACKEND_BASE_URL}/api/certificados/download/${fileName}`;
   }
   return null;

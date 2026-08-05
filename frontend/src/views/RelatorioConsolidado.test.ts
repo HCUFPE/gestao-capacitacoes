@@ -95,4 +95,24 @@ describe('RelatorioConsolidado', () => {
       expect(modal.exists()).toBe(true);
     }
   });
+
+  it('renderiza as 12 colunas corretamente', async () => {
+    mockApiGet.mockImplementation(() => Promise.resolve({ data: [] }));
+
+    const wrapper = mount(RelatorioConsolidado, {
+      global: {
+        stubs: { teleport: false, RouterLink: { template: '<a><slot/></a>' } },
+      },
+    });
+
+    await flushPromises();
+
+    const headers = wrapper.findAll('th');
+    expect(headers.length).toBe(12);
+
+    const headerTexts = headers.map(th => th.text());
+    expect(headerTexts).toEqual([
+      'Nome', 'Vínculo', 'Setor', 'Curso', 'Plataforma', 'CH', 'Ano GD', 'Status', 'Envio Certificado', 'Certificado Enviado', 'Certificado', 'Validação'
+    ]);
+  });
 });

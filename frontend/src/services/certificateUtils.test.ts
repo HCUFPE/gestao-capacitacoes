@@ -28,6 +28,13 @@ describe('getCertificateUrl', () => {
     expect(result).not.toContain('/some/deep/path');
   });
 
+  it('extracts only the filename from a Windows full path', () => {
+    const item = { certificado_file_path: 'C:\\some\\deep\\path\\to\\uuid-file.pdf' };
+    const result = getCertificateUrl(item);
+    expect(result).toContain('/api/certificados/download/uuid-file.pdf');
+    expect(result).not.toContain('C:\\some\\deep\\path');
+  });
+
   it('prioritizes certificado_link over certificado_file_path', () => {
     const item = {
       certificado_link: 'https://external.com/cert',

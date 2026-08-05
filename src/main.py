@@ -109,7 +109,10 @@ app.include_router(inscricao.router)
 # Rota para download/visualização de certificados
 @app.get("/api/certificados/download/{file_name:path}")
 async def download_certificado(file_name: str):
-    file_path = os.path.join("src", "static", "uploads", file_name)
+    # Garantir que temos apenas o nome do arquivo, removendo caminhos maliciosos ou de Windows
+    clean_file_name = os.path.basename(file_name.replace('\\', '/'))
+    uploads_dir = os.getenv("UPLOADS_DIR", "uploads")
+    file_path = os.path.join(uploads_dir, clean_file_name)
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="Certificado não encontrado")
     

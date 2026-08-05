@@ -67,6 +67,20 @@
         <template #item-status="{ item }">
           <span :class="getStatusClass(item.status)" class="px-2 py-1 rounded-full text-xs bg-gray-50 border border-gray-100">{{ item.status }}</span>
         </template>
+        <template #item-certificado_enviado="{ item }">
+          <div v-if="item.certificado_enviado === 'Sim'" class="flex items-center text-green-600 font-medium">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 mr-1">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+            </svg>
+            Sim
+          </div>
+          <div v-else class="flex items-center text-red-500 font-medium">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 mr-1">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            Não
+          </div>
+        </template>
         <template #item-certificado_link="{ item }">
           <a
             v-if="item.certificado_file_path || item.certificado_link"
@@ -84,6 +98,24 @@
               <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
+        </template>
+        <template #item-validacao="{ item }">
+          <div v-if="item.status === 'Validado'" class="flex items-center justify-center text-green-600" title="Validado">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div v-else-if="item.status === 'Inválido' || item.status === 'Rejeitado'" class="flex items-center justify-center text-red-500" title="Inválido">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div v-else-if="item.certificado_enviado === 'Sim'" class="flex items-center justify-center text-yellow-500" title="Aguardando Validação">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div v-else class="text-gray-400 flex items-center justify-center" title="Sem Certificado">-</div>
         </template>
       </DataTable>
     </Card>
@@ -138,11 +170,17 @@ const availableYears = computed(() => {
 // --- Table Headers ---
 const headers = [
   { text: 'Nome', value: 'nome' },
+  { text: 'Vínculo', value: 'vinculo' },
   { text: 'Setor', value: 'setor' },
   { text: 'Curso', value: 'nome_curso' },
+  { text: 'Plataforma', value: 'certificadora' },
   { text: 'CH', value: 'carga_horaria' },
+  { text: 'Ano GD', value: 'ano_gd' },
   { text: 'Status', value: 'status' },
-  { text: 'Cert.', value: 'certificado_link' },
+  { text: 'Envio Certificado', value: 'data_envio_certificado' },
+  { text: 'Certificado Enviado', value: 'certificado_enviado' },
+  { text: 'Certificado', value: 'certificado_link' },
+  { text: 'Validação', value: 'validacao' },
 ];
 
 // --- Helpers ---

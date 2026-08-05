@@ -39,7 +39,7 @@ router = APIRouter(
     tags=["Certificados"],
 )
 
-UPLOADS_DIR = "src/static/uploads"
+UPLOADS_DIR = os.getenv("UPLOADS_DIR", "uploads")
 
 @router.post("/upload", response_model=CertificadoResponse, dependencies=[Depends(auth_handler.decode_token)])
 async def registrar_certificado_upload(
