@@ -11,7 +11,7 @@ class CursoBase(BaseModel):
     tema: str | None = None # Corresponds to eixos_tematicos
     ano_gd: str | None = None
     lotacao_id: str | None = None
-    atribuir_a_todos: bool = False
+    atribuir_a_todos: bool | None = False
     
     conteudista: str | None = None
     disponibilidade_dias: int | None = None

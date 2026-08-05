@@ -24,7 +24,7 @@ async def listar_cursos(db: AsyncSession, skip: int = 0, limit: int = 10, titulo
         stmt = stmt.where(Curso.tema.ilike(f"%{tema}%"))
     
     # Get total count
-    count_stmt = select(func.count()).select_from(stmt.subquery())
+    count_stmt = select(func.count()).select_from(stmt.subquery('sub'))
     total = await db.scalar(count_stmt)
 
     # Apply pagination

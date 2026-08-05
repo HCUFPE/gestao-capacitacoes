@@ -130,7 +130,7 @@ describe('UserDetailsModal', () => {
     await wrapper.vm.$nextTick();
 
     // Find the button with text "Fechar" in the teleported content
-    const buttons = document.querySelectorAll('button');
+    const buttons = Array.from(document.querySelectorAll('button'));
     let closeButton: HTMLButtonElement | null = null;
     for (const btn of buttons) {
       if (btn.textContent?.includes('Fechar')) {

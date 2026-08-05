@@ -4,7 +4,7 @@
  * Content-Type correto e Content-Disposition inline.
  */
 
-const BACKEND_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const BACKEND_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 export interface CertificateItem {
   certificado_file_path?: string | null;
