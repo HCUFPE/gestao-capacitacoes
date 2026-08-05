@@ -101,7 +101,11 @@ async def desinscrever_de_curso(
             detail="Você não tem permissão para desinscrever-se deste curso."
         )
 
-    success = await inscricao_controller.desinscrever_usuario_de_curso(db, inscricao_id)
+    try:
+        success = await inscricao_controller.desinscrever_usuario_de_curso(db, inscricao_id)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
     if not success:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Inscrição não encontrada.")
     return

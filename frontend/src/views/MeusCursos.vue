@@ -29,7 +29,7 @@
                 <template #icon><ArrowUpTrayIcon class="h-5 w-5" /></template>
                 Reenviar
               </Button>
-              <Button v-if="['Realizado', 'Concluído', 'Validado'].includes(inscricao.status)" @click="handleUnenroll(inscricao.id)" variant="danger" type="button">
+              <Button v-if="inscricao.status === 'Em Andamento'" @click="handleUnenroll(inscricao.id)" variant="danger" type="button">
                 <template #icon><XCircleIcon class="h-5 w-5" /></template>
                 Desinscrever-se
               </Button>

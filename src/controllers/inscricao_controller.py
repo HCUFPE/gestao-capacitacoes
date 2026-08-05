@@ -90,6 +90,9 @@ async def desinscrever_usuario_de_curso(db: AsyncSession, inscricao_id: str) -> 
     atribuicao_a_reverter = result_atribuicao.scalars().first()
 
     if atribuicao_a_reverter:
+        if atribuicao_a_reverter.certificado_id or atribuicao_a_reverter.status != StatusAtribuicao.EM_ANDAMENTO:
+            raise ValueError("Não é possível cancelar uma inscrição que já possui certificado enviado.")
+
         if atribuicao_a_reverter.criado_por_usuario:
             # Se a atribuição foi criada pelo usuário, deleta
             await db.delete(atribuicao_a_reverter)

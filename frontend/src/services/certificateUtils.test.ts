@@ -18,7 +18,7 @@ describe('getCertificateUrl', () => {
   it('returns API URL when certificado_file_path is present', () => {
     const item = { certificado_file_path: 'src/static/uploads/abc-123.pdf' };
     const result = getCertificateUrl(item);
-    expect(result).toBe('http://localhost:8000/api/certificados/download/abc-123.pdf');
+    expect(result).toBe('/api/certificados/download/abc-123.pdf');
   });
 
   it('extracts only the filename from a full path', () => {
@@ -39,6 +39,6 @@ describe('getCertificateUrl', () => {
   it('handles image file extensions correctly in the URL', () => {
     const item = { certificado_file_path: 'uploads/photo.jpg' };
     const result = getCertificateUrl(item);
-    expect(result).toBe('http://localhost:8000/api/certificados/download/photo.jpg');
+    expect(result).toBe('/api/certificados/download/photo.jpg');
   });
 });
