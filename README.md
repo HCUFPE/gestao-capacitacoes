@@ -48,3 +48,6 @@ Para entender a fundo os conceitos e padroes utilizados neste framework, consult
 
 - **[Arquitetura do Projeto (ARCHITECTURE.md)](./docs/ARCHITECTURE.md)**
 - **[Sistema de Autenticacao (AUTHENTICATION.md)](./docs/AUTHENTICATION.md)**
+
+## Automação e Deploy (CI/CD)
+O deploy desta aplicação está automatizado utilizando GitHub Actions (Self-Hosted Runner). Qualquer modificação enviada para a branch principal executará as rotinas de build do Vue, atualização de pacotes Python e restart do sistema no servidor em produção.
