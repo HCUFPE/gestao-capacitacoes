@@ -17,8 +17,10 @@ async def sincronizar_usuario(db: AsyncSession, user_info: dict) -> Usuario:
         # Não deveria acontecer se a autenticação AD funcionou
         raise ValueError("sAMAccountName não encontrado nos dados do AD")
 
-    # Busca o usuário existente
-    stmt_select = select(Usuario).where(Usuario.id == user_id)
+    user_id = user_id.lower()
+
+    # Busca o usuário existente (case insensitive)
+    stmt_select = select(Usuario).where(func.lower(Usuario.id) == user_id)
     result = await db.execute(stmt_select)
     db_user = result.scalars().first()
 
@@ -153,7 +155,9 @@ async def get_user_by_username(db: AsyncSession, username: str) -> Usuario | Non
     """
     Retorna um objeto Usuario pelo seu username (sAMAccountName), que é o ID no banco de dados.
     """
-    stmt = select(Usuario).where(Usuario.id == username)
+    if not username:
+        return None
+    stmt = select(Usuario).where(func.lower(Usuario.id) == username.lower())
     result = await db.execute(stmt)
     return result.scalars().first()
 
