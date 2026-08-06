@@ -67,4 +67,27 @@ describe('MeusCursos.vue', () => {
     const unenrollCount = buttonTexts.filter((t) => t.includes('Desinscrever-se')).length;
     expect(unenrollCount).toBe(1);
   });
+
+  it('exibe o botão Reenviar Certificado para inscrições com status Realizado', async () => {
+    const wrapper = mount(MeusCursos, {
+      global: {
+        stubs: {
+          Card: { template: '<div><slot name="header"></slot><slot></slot></div>' },
+          Button: { template: '<button><slot name="icon"></slot><slot></slot></button>' },
+          CourseCard: { template: '<div><slot></slot><slot name="secondary-action"></slot><slot name="primary-action"></slot></div>' },
+          CertificateUploadModal: true,
+          CourseDetailsModal: true,
+          CourseCatalogModal: true,
+        },
+      },
+    });
+
+    await flushPromises();
+
+    const buttons = wrapper.findAll('button');
+    const buttonTexts = buttons.map((b) => b.text());
+
+    const reuploadButton = buttonTexts.find((t) => t.includes('Reenviar Certificado'));
+    expect(reuploadButton).toBeDefined();
+  });
 });

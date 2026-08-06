@@ -25,9 +25,9 @@
         <div class="space-y-4">
           <CourseCard v-for="inscricao in enrolledCourses" :key="inscricao.id" :curso="{ ...inscricao.curso, status: inscricao.status, atribuicaoId: inscricao.atribuicao_id }" @send-certificate="handleSendCertificate">
             <template #secondary-action>
-              <Button v-if="['Realizado', 'Concluído', 'Validado'].includes(inscricao.status)" @click="handleSendCertificate(inscricao.atribuicao_id, true)" variant="warning" type="button">
+              <Button v-if="['Realizado', 'Recusado'].includes(inscricao.status)" @click="handleSendCertificate(inscricao.atribuicao_id, true)" variant="warning" type="button">
                 <template #icon><ArrowUpTrayIcon class="h-5 w-5" /></template>
-                Reenviar
+                Reenviar Certificado
               </Button>
               <Button v-if="inscricao.status === 'Em Andamento'" @click="handleUnenroll(inscricao.id)" variant="danger" type="button">
                 <template #icon><XCircleIcon class="h-5 w-5" /></template>
@@ -57,9 +57,9 @@
         <div class="space-y-4">
           <CourseCard v-for="atribuicao in filteredAssignedCourses" :key="atribuicao.id" :curso="{ ...atribuicao.curso, status: atribuicao.status, atribuicaoId: atribuicao.id }" @send-certificate="handleSendCertificate">
             <template #secondary-action>
-              <Button v-if="['Realizado', 'Concluído', 'Validado'].includes(atribuicao.status)" @click="handleSendCertificate(atribuicao.id, true)" variant="warning" type="button">
+              <Button v-if="['Realizado', 'Recusado'].includes(atribuicao.status)" @click="handleSendCertificate(atribuicao.id, true)" variant="warning" type="button">
                 <template #icon><ArrowUpTrayIcon class="h-5 w-5" /></template>
-                Reenviar
+                Reenviar Certificado
               </Button>
             </template>
             <template #primary-action>

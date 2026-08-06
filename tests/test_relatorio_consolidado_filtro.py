@@ -52,3 +52,14 @@ async def test_get_consolidado_udp_com_filtro_lotacao(db_session):
     data_a = await relatorio_controller.get_relatorio_consolidado(db_session, lotacao="SETOR A")
     assert len(data_a) == 1
     assert data_a[0]["setor"] == "SETOR A"
+
+
+@pytest.mark.asyncio
+async def test_export_consolidado_excel_udp_endpoint(async_client, db_session):
+    """Excel export endpoint should return status 200 and binary xlsx file without error."""
+    token = _create_token("admin.user", PerfilUsuario.UDP.value)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    response = await async_client.get("/api/relatorios/udp/consolidado/export/excel", headers=headers)
+    assert response.status_code == 200
+    assert "spreadsheetml" in response.headers.get("content-type", "")
