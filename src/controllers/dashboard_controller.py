@@ -33,8 +33,11 @@ async def get_dashboard_stats(db: AsyncSession, user_id: str | None = None) -> D
         meus_certificados_validados = 0
 
         if user_id:
-            minhas_inscricoes_stmt = select(func.count(Inscricao.id)).where(func.lower(Inscricao.user_id) == user_id.lower())
-            minhas_inscricoes = (await db.execute(minhas_inscricoes_stmt)).scalar_one()
+            user_id_lower = user_id.lower()
+            inscricoes_cursos = select(Inscricao.curso_id).where(func.lower(Inscricao.user_id) == user_id_lower)
+            atribuicoes_cursos = select(Atribuicao.curso_id).where(func.lower(Atribuicao.user_id) == user_id_lower)
+            union_stmt = inscricoes_cursos.union(atribuicoes_cursos)
+            minhas_inscricoes = (await db.execute(select(func.count()).select_from(union_stmt.subquery()))).scalar_one()
 
             meus_certificados_enviados_stmt = select(func.count(Atribuicao.id)).where(
                 (func.lower(Atribuicao.user_id) == user_id.lower()) & (Atribuicao.certificado_id.isnot(None))
