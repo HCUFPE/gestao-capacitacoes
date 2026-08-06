@@ -17,6 +17,9 @@ class DashboardStatsResponse(BaseModel):
     total_inscricoes: int
     total_certificados_validados: int
     total_usuarios: int
+    minhas_inscricoes: int = 0
+    meus_certificados_enviados: int = 0
+    meus_certificados_validados: int = 0
 
 @router.get("/lotacoes", response_model=List[str], dependencies=[Depends(auth_handler.decode_token)])
 async def get_lotacoes_unicas(
@@ -27,11 +30,13 @@ async def get_lotacoes_unicas(
     """
     return await usuario_controller.listar_lotacoes_unicas(db)
 
-@router.get("/stats", response_model=DashboardStatsResponse, dependencies=[Depends(auth_handler.decode_token)])
+@router.get("/stats", response_model=DashboardStatsResponse)
 async def get_stats(
+    current_user: dict = Depends(auth_handler.decode_token),
     db: AsyncSession = Depends(get_app_db_session)
 ):
     """
-    Retorna estatísticas gerais para o dashboard.
+    Retorna estatísticas gerais e pessoais para o dashboard.
     """
-    return await dashboard_controller.get_dashboard_stats(db)
+    user_id = current_user.get("sub") or current_user.get("username")
+    return await dashboard_controller.get_dashboard_stats(db, user_id=user_id)
