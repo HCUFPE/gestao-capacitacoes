@@ -5,6 +5,10 @@ on:
     branches:
       - master # Altere se a branch principal for "main"
 
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   deploy:
     runs-on: self-hosted
