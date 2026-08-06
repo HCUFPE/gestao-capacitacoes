@@ -103,10 +103,12 @@ router.beforeEach((to: RouteLocationNormalized, _from: RouteLocationNormalized, 
       ? to.meta.requiresProfile
       : [to.meta.requiresProfile];
     
+    // Chefia tem as mesmas permissões que UDP
+    const effectiveRequiredProfiles = requiredProfiles.flatMap(p => p === 'UDP' ? ['UDP', 'Chefia'] : [p]);
     const userProfile = authStore.user?.perfil;
 
-    if (!userProfile || !requiredProfiles.includes(userProfile)) {
-      console.warn(`Acesso negado à rota ${to.path}. Perfil necessário: ${requiredProfiles.join(' ou ')}. Perfil do usuário: ${userProfile}`);
+    if (!userProfile || !effectiveRequiredProfiles.includes(userProfile)) {
+      console.warn(`Acesso negado à rota ${to.path}. Perfil necessário: ${effectiveRequiredProfiles.join(' ou ')}. Perfil do usuário: ${userProfile}`);
       return next({ name: 'Home' });
     }
   }

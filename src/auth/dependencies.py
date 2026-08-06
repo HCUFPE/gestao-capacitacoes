@@ -24,13 +24,13 @@ def is_chefia(current_user: dict = Depends(get_current_user)) -> dict:
 
 def is_udp(current_user: dict = Depends(get_current_user)) -> dict:
     """
-    Dependency that checks if the current user has 'UDP' profile.
+    Dependency that checks if the current user has 'UDP' or 'Chefia' profile.
     Raises a 403 Forbidden error if not.
     """
     perfil = current_user.get("perfil")
-    if perfil != PerfilUsuario.UDP.value:
+    if perfil not in [PerfilUsuario.UDP.value, PerfilUsuario.CHEFIA.value]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Acesso negado. Requer perfil de UDP (Administrador)."
+            detail="Acesso negado. Requer perfil de UDP ou Chefia (Administrador)."
         )
     return current_user

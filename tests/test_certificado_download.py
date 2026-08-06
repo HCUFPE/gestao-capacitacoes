@@ -16,7 +16,7 @@ async def test_download_certificado_nao_encontrado(async_client):
 @pytest.mark.asyncio
 async def test_download_certificado_pdf(async_client):
     """PDF certificate should return Content-Type application/pdf and Content-Disposition inline."""
-    uploads_dir = os.path.join(os.path.dirname(__file__), "..", "src", "static", "uploads")
+    uploads_dir = os.getenv("UPLOADS_DIR", "uploads")
     os.makedirs(uploads_dir, exist_ok=True)
 
     test_file = os.path.join(uploads_dir, "test_cert.pdf")
@@ -37,7 +37,7 @@ async def test_download_certificado_pdf(async_client):
 @pytest.mark.asyncio
 async def test_download_certificado_png(async_client):
     """PNG image certificate should return Content-Type image/png and Content-Disposition inline."""
-    uploads_dir = os.path.join(os.path.dirname(__file__), "..", "src", "static", "uploads")
+    uploads_dir = os.getenv("UPLOADS_DIR", "uploads")
     os.makedirs(uploads_dir, exist_ok=True)
 
     # Minimal PNG header (8 bytes)
@@ -59,7 +59,7 @@ async def test_download_certificado_png(async_client):
 @pytest.mark.asyncio
 async def test_download_certificado_jpg(async_client):
     """JPEG image certificate should return Content-Type image/jpeg and Content-Disposition inline."""
-    uploads_dir = os.path.join(os.path.dirname(__file__), "..", "src", "static", "uploads")
+    uploads_dir = os.getenv("UPLOADS_DIR", "uploads")
     os.makedirs(uploads_dir, exist_ok=True)
 
     # Minimal JPEG header

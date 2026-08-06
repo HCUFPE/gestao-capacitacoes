@@ -20,8 +20,8 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isAuthenticated = computed(() => !!accessToken.value);
   
-  const isUdp = computed(() => user.value?.perfil === 'UDP');
-  const isChefia = computed(() => user.value?.perfil === 'Chefia');
+  const isUdp = computed(() => user.value?.perfil === 'UDP' || user.value?.perfil === 'Chefia');
+  const isChefia = computed(() => user.value?.perfil === 'Chefia' || user.value?.perfil === 'UDP');
   const isManagerOrAdmin = computed(() => isChefia.value || isUdp.value);
 
 
