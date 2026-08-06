@@ -309,14 +309,15 @@ async def get_consolidado_chefia(
 async def get_consolidado_udp(
     ano: str | None = None,
     vinculo: str | None = None,
+    lotacao: str | None = None,
     db: AsyncSession = Depends(get_app_db_session)
 ):
     """
     Relatório consolidado para a UDP (todas as lotações).
-    Suporta filtros opcionais por ano e vínculo.
+    Suporta filtros opcionais por ano, vínculo e lotação/setor.
     """
     return await relatorio_controller.get_relatorio_consolidado(
-        db, lotacao=None, ano=ano, vinculo=vinculo
+        db, lotacao=lotacao, ano=ano, vinculo=vinculo
     )
 
 
@@ -372,13 +373,14 @@ async def export_consolidado_pdf_chefia(
 async def export_consolidado_excel_udp(
     ano: str | None = None,
     vinculo: str | None = None,
+    lotacao: str | None = None,
     db: AsyncSession = Depends(get_app_db_session)
 ):
     """
     Exporta o relatório consolidado para Excel (UDP).
     """
     data = await relatorio_controller.get_relatorio_consolidado(
-        db, lotacao=None, ano=ano, vinculo=vinculo
+        db, lotacao=lotacao, ano=ano, vinculo=vinculo
     )
     file_stream = await excel_helper.export_to_excel(data)
     headers = {'Content-Disposition': 'attachment; filename="relatorio_consolidado.xlsx"'}
@@ -389,13 +391,14 @@ async def export_consolidado_excel_udp(
 async def export_consolidado_pdf_udp(
     ano: str | None = None,
     vinculo: str | None = None,
+    lotacao: str | None = None,
     db: AsyncSession = Depends(get_app_db_session)
 ):
     """
     Exporta o relatório consolidado para PDF (UDP).
     """
     data = await relatorio_controller.get_relatorio_consolidado(
-        db, lotacao=None, ano=ano, vinculo=vinculo
+        db, lotacao=lotacao, ano=ano, vinculo=vinculo
     )
     file_stream = await relatorio_controller.export_consolidado_to_pdf(data)
     headers = {'Content-Disposition': 'attachment; filename="relatorio_consolidado.pdf"'}

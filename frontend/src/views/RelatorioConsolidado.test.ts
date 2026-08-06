@@ -115,4 +115,35 @@ describe('RelatorioConsolidado', () => {
       'Nome', 'Vínculo', 'Setor', 'Curso', 'Plataforma', 'CH', 'Ano GD', 'Status', 'Envio Certificado', 'Certificado Enviado', 'Certificado', 'Validação'
     ]);
   });
+
+  it('filtra por setor e realiza chamada com parametro lotacao', async () => {
+    mockApiGet.mockImplementation((url: string) => {
+      if (url === '/api/utils/lotacoes') {
+        return Promise.resolve({ data: ['SETOR A', 'SETOR B'] });
+      }
+      return Promise.resolve({ data: [] });
+    });
+
+    const wrapper = mount(RelatorioConsolidado, {
+      global: {
+        stubs: { teleport: false, RouterLink: { template: '<a><slot/></a>' } },
+      },
+    });
+
+    await flushPromises();
+
+    const selects = wrapper.findAll('select');
+    const setorSelect = selects.find(s => s.html().includes('Todos os setores/lotações'));
+    expect(setorSelect).toBeDefined();
+
+    if (setorSelect) {
+      await setorSelect.setValue('SETOR A');
+      await flushPromises();
+
+      expect(mockApiGet).toHaveBeenCalledWith(
+        '/api/relatorios/udp/consolidado',
+        expect.objectContaining({ params: expect.objectContaining({ lotacao: 'SETOR A' }) })
+      );
+    }
+  });
 });

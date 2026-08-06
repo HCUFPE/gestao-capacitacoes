@@ -41,6 +41,15 @@
           <option v-for="v in vinculosDisponiveis" :key="v" :value="v">{{ v }}</option>
         </select>
 
+        <select
+          v-model="filterSetor"
+          @change="fetchData"
+          class="px-3 py-2 bg-white border border-gray-300 rounded-md text-sm"
+        >
+          <option value="">Todos os setores/lotações</option>
+          <option v-for="setor in setoresDisponiveis" :key="setor" :value="setor">{{ setor }}</option>
+        </select>
+
         <button
           @click="clearFilters"
           class="px-3 py-2 text-sm text-gray-600 hover:text-gray-800 underline"
@@ -158,7 +167,9 @@ const title = computed(() => {
 // --- Filters ---
 const filterAno = ref('');
 const filterVinculo = ref('');
+const filterSetor = ref('');
 const vinculosDisponiveis = ref<string[]>([]);
+const setoresDisponiveis = ref<string[]>([]);
 
 const availableYears = computed(() => {
   const currentYear = new Date().getFullYear();
@@ -207,6 +218,7 @@ const fetchData = async () => {
     const params: Record<string, string> = {};
     if (filterAno.value) params.ano = filterAno.value;
     if (filterVinculo.value) params.vinculo = filterVinculo.value;
+    if (filterSetor.value) params.lotacao = filterSetor.value;
 
     const endpoint = isChefia.value
       ? '/api/relatorios/chefia/consolidado'
@@ -228,6 +240,7 @@ const downloadExcel = async () => {
     const params: Record<string, string> = {};
     if (filterAno.value) params.ano = filterAno.value;
     if (filterVinculo.value) params.vinculo = filterVinculo.value;
+    if (filterSetor.value) params.lotacao = filterSetor.value;
 
     const endpoint = isChefia.value
       ? '/api/relatorios/chefia/consolidado/export/excel'
@@ -254,6 +267,7 @@ const downloadPdf = async () => {
     const params: Record<string, string> = {};
     if (filterAno.value) params.ano = filterAno.value;
     if (filterVinculo.value) params.vinculo = filterVinculo.value;
+    if (filterSetor.value) params.lotacao = filterSetor.value;
 
     const endpoint = isChefia.value
       ? '/api/relatorios/chefia/consolidado/export/pdf'
@@ -283,9 +297,21 @@ const fetchVinculos = async () => {
   }
 };
 
+const fetchSetores = async () => {
+  try {
+    const { data } = await api.get('/api/utils/lotacoes');
+    if (Array.isArray(data)) {
+      setoresDisponiveis.value = data.filter(Boolean).sort();
+    }
+  } catch {
+    // Setores may not be available, ignore
+  }
+};
+
 const clearFilters = () => {
   filterAno.value = '';
   filterVinculo.value = '';
+  filterSetor.value = '';
   fetchData();
 };
 
@@ -306,6 +332,7 @@ const closeUserModal = () => {
 
 onMounted(async () => {
   await fetchVinculos();
+  await fetchSetores();
   await fetchData();
   loading.value = false;
 });
